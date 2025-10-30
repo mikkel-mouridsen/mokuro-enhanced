@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mokuro-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mokuro_enhanced
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mokuro-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mokuro-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mokuro-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: mokuro-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - mokuro-network
+
+  backend:
+    build:
+      context: ./packages/server
+      dockerfile: Dockerfile.dev
+    container_name: mokuro-backend
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: mokuro_enhanced
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: dev-secret-change-in-production
+      STORAGE_TYPE: local
+      STORAGE_PATH: /app/uploads
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./packages/server/src:/app/src
+      - ./packages/server/uploads:/app/uploads
+      - ./packages/server/temp:/app/temp
+      - backend_node_modules:/app/node_modules  # Use named volume for node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - mokuro-network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./packages/worker
+      dockerfile: Dockerfile
+    container_name: mokuro-worker
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      UPLOADS_DIR: /data/uploads
+      TEMP_DIR: /data/temp
+      MOKURO_MODEL: kha-white/manga-ocr-base
+      FORCE_CPU: "false"
+    volumes:
+      - ./packages/server/uploads:/data/uploads
+      - ./packages/server/temp:/data/temp
+    depends_on:
+      - redis
+    networks:
+      - mokuro-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  backend_node_modules:  # Persist node_modules built inside container
+
+networks:
+  mokuro-network:
+    driver: bridge
+

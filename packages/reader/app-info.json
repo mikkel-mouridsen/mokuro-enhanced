@@ -1,0 +1,8 @@
+{
+  "name": "Mokuro Enhanced Reader",
+  "short_name": "Mokuro Reader",
+  "description": "Electron-based manga reader with Yomitan integration",
+  "author": "Mokuro Enhanced Team",
+  "version": "1.0.0"
+}
+
