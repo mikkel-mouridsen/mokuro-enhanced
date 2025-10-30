@@ -3,6 +3,7 @@ redis>=5.0.0
 loguru>=0.7.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
+requests>=2.31.0
 
 # Mokuro - install from PyPI
 mokuro==0.2.2

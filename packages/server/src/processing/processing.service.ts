@@ -96,14 +96,14 @@ export class ProcessingService {
 
     // Set output path for mokuro file
     const outputPath = `manga/${manga.id}/volume-${detectedVolumeNumber}/volume.mokuro`;
-    const fullCbzPath = path.join(this.storageService.getStorageRoot(), cbzPath);
     const fullOutputPath = path.join(this.storageService.getStorageRoot(), outputPath);
 
     // Add job to queue
+    // Send relative path that worker can use to download from backend via HTTP
     await this.queueService.addJob({
       jobId,
       volumeId: volume.id,
-      cbzPath: fullCbzPath,
+      cbzPath: cbzPath, // Send relative path, worker will download via /files/{path}
       outputPath: fullOutputPath,
       userId,
       mangaTitle: detectedTitle,

@@ -8,6 +8,7 @@ import json
 import time
 import shutil
 import zipfile
+import requests
 from pathlib import Path
 from typing import Dict, Any, Optional
 import redis
@@ -45,8 +46,7 @@ class MokuroWorker:
             logger.error(f"Failed to connect to Redis: {e}")
             raise
         
-        # Create storage directories
-        os.makedirs(settings.uploads_dir, exist_ok=True)
+        # Create temp directory
         os.makedirs(settings.temp_dir, exist_ok=True)
         
         # Initialize mokuro generator (lazy load to save memory)
@@ -80,7 +80,27 @@ class MokuroWorker:
         except Exception as e:
             logger.error(f"Failed to publish progress: {e}")
     
-    def extract_cbz(self, cbz_path: str, extract_dir: str) -> Path:
+    def download_file(self, relative_path: str, destination: Path) -> Path:
+        """Download file from backend"""
+        # Construct the file URL from relative path
+        file_url = f"{settings.backend_url}/files/{relative_path}"
+        logger.info(f"Downloading file from: {file_url}")
+        
+        try:
+            response = requests.get(file_url, stream=True, timeout=300)
+            response.raise_for_status()
+            
+            with open(destination, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            logger.info(f"Downloaded file to: {destination}")
+            return destination
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to download file from {file_url}: {e}")
+            raise ValueError(f"Failed to download file: {e}")
+    
+    def extract_cbz(self, cbz_path: Path, extract_dir: str) -> Path:
         """Extract CBZ file to directory"""
         logger.info(f"Extracting CBZ: {cbz_path}")
         
@@ -113,7 +133,7 @@ class MokuroWorker:
         output_path = job_data.get("outputPath")
         
         logger.info(f"Processing job {job_id}: volume {volume_id}")
-        self.publish_progress(job_id, 0, "processing", "Starting CBZ extraction...")
+        self.publish_progress(job_id, 0, "processing", "Downloading CBZ file...")
         
         temp_dir = None
         try:
@@ -121,11 +141,16 @@ class MokuroWorker:
             temp_dir = Path(settings.temp_dir) / f"job_{job_id}_{int(time.time())}"
             temp_dir.mkdir(parents=True, exist_ok=True)
             
+            # Download CBZ file from backend
+            self.publish_progress(job_id, 5, "processing", "Downloading CBZ file...")
+            cbz_file_path = temp_dir / "volume.cbz"
+            self.download_file(cbz_path, cbz_file_path)
+            
             # Extract CBZ
             self.publish_progress(job_id, 10, "processing", "Extracting CBZ file...")
             extract_dir = temp_dir / "extracted"
             extract_dir.mkdir(exist_ok=True)
-            volume_path = self.extract_cbz(cbz_path, str(extract_dir))
+            volume_path = self.extract_cbz(cbz_file_path, str(extract_dir))
             
             # Create Volume object for mokuro
             self.publish_progress(job_id, 20, "processing", "Preparing for OCR...")
@@ -138,7 +163,9 @@ class MokuroWorker:
                 raise ValueError("Failed to create volume from extracted CBZ")
             
             volume = list(vc)[0]
-            volume.set_uuid()
+            # Note: set_uuid() may not be available in all mokuro versions
+            if hasattr(volume, 'set_uuid'):
+                volume.set_uuid()
             
             # Set output path for mokuro file
             mokuro_output_dir = Path(output_path).parent

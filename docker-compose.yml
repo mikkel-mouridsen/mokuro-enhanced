@@ -31,57 +31,6 @@ services:
     networks:
       - mokuro-network
 
-  minio:
-    image: minio/minio:latest
-    container_name: mokuro-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: admin123
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - mokuro-network
-
-  backend:
-    build:
-      context: ./packages/server
-      dockerfile: Dockerfile.dev
-    container_name: mokuro-backend
-    environment:
-      NODE_ENV: development
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_NAME: mokuro_enhanced
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: dev-secret-change-in-production
-      STORAGE_TYPE: local
-      STORAGE_PATH: /app/uploads
-    ports:
-      - '3000:3000'
-    volumes:
-      - ./packages/server/src:/app/src
-      - ./packages/server/uploads:/app/uploads
-      - ./packages/server/temp:/app/temp
-      - backend_node_modules:/app/node_modules  # Use named volume for node_modules
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - mokuro-network
-    restart: unless-stopped
-
   worker:
     build:
       context: ./packages/worker
@@ -90,25 +39,32 @@ services:
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      UPLOADS_DIR: /data/uploads
       TEMP_DIR: /data/temp
+      BACKEND_URL: http://host.docker.internal:3000
       MOKURO_MODEL: kha-white/manga-ocr-base
       FORCE_CPU: "false"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
-      - ./packages/server/uploads:/data/uploads
-      - ./packages/server/temp:/data/temp
+      # Worker only needs its own temp directory for processing
+      - worker_temp:/data/temp
     depends_on:
       - redis
     networks:
       - mokuro-network
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 volumes:
   postgres_data:
-  minio_data:
-  backend_node_modules:  # Persist node_modules built inside container
+  worker_temp:
 
 networks:
   mokuro-network:
     driver: bridge
-

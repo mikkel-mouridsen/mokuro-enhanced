@@ -16,8 +16,10 @@ class Settings(BaseSettings):
     progress_channel: str = "mokuro:progress"
     
     # Storage paths
-    uploads_dir: str = "/data/uploads"
     temp_dir: str = "/data/temp"
+    
+    # Backend configuration
+    backend_url: str = "http://host.docker.internal:3000"
     
     # Mokuro configuration
     mokuro_model: str = "kha-white/manga-ocr-base"
