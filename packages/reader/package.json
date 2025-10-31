@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "Electron-based manga reader with Yomitan integration",
   "main": "dist/electron/main.js",
+  "author": "Mikkel Mouridsen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikkel-mouridsen/mokuro-enhanced.git"
+  },
   "scripts": {
     "dev": "npm run build:electron-dev && concurrently \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "vite",
