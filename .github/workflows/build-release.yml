@@ -58,7 +58,15 @@ jobs:
         working-directory: packages/reader
         shell: bash
         run: |
-          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          TARGET_VERSION="${{ github.event.inputs.version }}"
+          
+          if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+            echo "Updating version from $CURRENT_VERSION to $TARGET_VERSION"
+            npm version $TARGET_VERSION --no-git-tag-version
+          else
+            echo "Version is already $TARGET_VERSION, skipping update"
+          fi
 
       - name: Build Electron app
         working-directory: packages/reader
