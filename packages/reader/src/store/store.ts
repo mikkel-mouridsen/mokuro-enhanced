@@ -5,6 +5,7 @@ import settingsReducer from './settings.slice';
 import uiReducer from './ui.slice';
 import libraryReducer from './library.slice';
 import authReducer from './auth.slice';
+import appSettingsReducer from './app-settings.slice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     ui: uiReducer,
     library: libraryReducer,
     auth: authReducer,
+    appSettings: appSettingsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

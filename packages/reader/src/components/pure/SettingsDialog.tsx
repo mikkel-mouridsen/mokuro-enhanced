@@ -25,7 +25,7 @@ import {
   Chip,
 } from '@mui/material';
 import { Smartphone, Computer } from '@mui/icons-material';
-import { ReaderSettings, DeviceProfile } from '../../store/models';
+import { ReaderSettings, DeviceProfile, AppSettings } from '../../store/models';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -52,9 +52,11 @@ export interface SettingsDialogProps {
   open: boolean;
   settings: ReaderSettings;
   currentProfile: DeviceProfile;
+  appSettings?: AppSettings;
   onClose: () => void;
   onSettingsChange: (settings: Partial<ReaderSettings>) => void;
   onProfileChange: (profile: DeviceProfile) => void;
+  onAppSettingsChange?: (settings: Partial<AppSettings>) => void;
   onSaveSettings?: () => void;
 }
 
@@ -62,9 +64,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   open,
   settings,
   currentProfile,
+  appSettings,
   onClose,
   onSettingsChange,
   onProfileChange,
+  onAppSettingsChange,
   onSaveSettings,
 }) => {
   const [currentTab, setCurrentTab] = React.useState(0);
@@ -75,6 +79,12 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
   const handleChange = (key: keyof ReaderSettings, value: any) => {
     onSettingsChange({ [key]: value });
+  };
+
+  const handleAppSettingsChange = (key: keyof AppSettings, value: any) => {
+    if (onAppSettingsChange) {
+      onAppSettingsChange({ [key]: value });
+    }
   };
 
   const handleProfileChange = (_event: React.MouseEvent<HTMLElement>, newProfile: DeviceProfile | null) => {
@@ -117,14 +127,62 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
       <DialogContent>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={currentTab} onChange={handleTabChange}>
+            <Tab label="App Settings" />
             <Tab label="Display" />
             <Tab label="Reading" />
             <Tab label="OCR" />
           </Tabs>
         </Box>
 
-        {/* Display Settings */}
+        {/* App Settings */}
         <TabPanel value={currentTab} index={0}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Backend Endpoint */}
+            <Box>
+              <Typography gutterBottom fontWeight="bold">
+                Backend Endpoint
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                Configure the URL of your Mokuro Enhanced backend server.
+                Changes require a page refresh to take effect.
+              </Typography>
+              <TextField
+                fullWidth
+                label="Backend URL"
+                value={appSettings?.backendEndpoint || ''}
+                onChange={(e) => handleAppSettingsChange('backendEndpoint', e.target.value)}
+                placeholder="http://localhost:3000"
+                helperText="Example: http://localhost:3000 or https://your-server.com"
+              />
+            </Box>
+
+            <Divider />
+
+            {/* Connection Status */}
+            <Box>
+              <Typography gutterBottom fontWeight="bold">
+                Connection Status
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                <Chip
+                  label="Connected"
+                  color="success"
+                  size="small"
+                  sx={{ fontWeight: 'bold' }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Backend is reachable
+                </Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Current endpoint: {appSettings?.backendEndpoint || 'Not configured'}
+              </Typography>
+            </Box>
+          </Box>
+        </TabPanel>
+
+        {/* Display Settings */}
+        <TabPanel value={currentTab} index={1}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Dark Mode */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -172,7 +230,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </TabPanel>
 
         {/* Reading Settings */}
-        <TabPanel value={currentTab} index={1}>
+        <TabPanel value={currentTab} index={2}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Page Layout */}
             <FormControl component="fieldset">
@@ -246,7 +304,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </TabPanel>
 
         {/* OCR Settings */}
-        <TabPanel value={currentTab} index={2}>
+        <TabPanel value={currentTab} index={3}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Display OCR */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -97,3 +97,13 @@ export interface UIState {
   fullscreen: boolean;
 }
 
+export interface AppSettings {
+  backendEndpoint: string;
+}
+
+export interface AppSettingsState {
+  settings: AppSettings;
+  isLoading: boolean;
+  error: string | null;
+}
+

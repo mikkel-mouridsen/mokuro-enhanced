@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+export interface BulkImportItem {
+  path: string;
+  type: 'cbz' | 'mokuro' | 'images';
+  mangaTitle: string;
+  volumeNumber: number;
+  fileName: string;
+}
+
 export interface ElectronAPI {
   openFileDialog: () => Promise<string | null>;
   openFolderDialog: () => Promise<string | null>;
@@ -12,6 +20,11 @@ export interface ElectronAPI {
   openYomitanSettings: () => Promise<void>;
   checkYomitanLoaded: () => Promise<boolean>;
   getYomitanExtensionId: () => Promise<string | null>;
+  // Bulk Import APIs
+  scanDirectoryForManga: (dirPath: string, recursive: boolean) => Promise<BulkImportItem[]>;
+  readFileAsBuffer: (filePath: string) => Promise<Uint8Array>;
+  createMokuroZip: (folderPath: string) => Promise<Uint8Array>;
+  createImagesZip: (folderPath: string) => Promise<Uint8Array>;
 }
 
 const electronAPI: ElectronAPI = {
@@ -28,6 +41,15 @@ const electronAPI: ElectronAPI = {
   openYomitanSettings: () => ipcRenderer.invoke('open-yomitan-settings'),
   checkYomitanLoaded: () => ipcRenderer.invoke('check-yomitan-loaded'),
   getYomitanExtensionId: () => ipcRenderer.invoke('get-yomitan-extension-id'),
+  // Bulk Import APIs
+  scanDirectoryForManga: (dirPath: string, recursive: boolean) => 
+    ipcRenderer.invoke('scan-directory-for-manga', dirPath, recursive),
+  readFileAsBuffer: (filePath: string) => 
+    ipcRenderer.invoke('read-file-as-buffer', filePath),
+  createMokuroZip: (folderPath: string) => 
+    ipcRenderer.invoke('create-mokuro-zip', folderPath),
+  createImagesZip: (folderPath: string) => 
+    ipcRenderer.invoke('create-images-zip', folderPath),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

@@ -16,6 +16,8 @@ import {
   setSettingsDialogOpen,
 } from '../../store/ui.slice';
 import { updateSettings, switchProfile, loadSettings, saveSettings } from '../../store/settings.slice';
+import { updateAppSettings } from '../../store/app-settings.slice';
+import { updateApiBaseUrl } from '../../api/api-client';
 import { toggleYomitan } from '../../store/yomitan.slice';
 import { openMangaFolder, loadVolumeFromLibrary } from '../../store/reader.thunks';
 import { checkYomitanStatus, installYomitan } from '../../store/yomitan.thunks';
@@ -39,6 +41,7 @@ const MainLayout: React.FC = () => {
   const yomitanStatus = useAppSelector((state) => state.yomitan.status);
   const yomitanInstalling = useAppSelector((state) => state.yomitan.installing);
   const yomitanError = useAppSelector((state) => state.yomitan.error);
+  const appSettings = useAppSelector((state) => state.appSettings.settings);
 
   const [yomitanDialogOpen, setYomitanDialogOpen] = React.useState(false);
   const [hasLoadedSettings, setHasLoadedSettings] = React.useState(false);
@@ -156,6 +159,15 @@ const MainLayout: React.FC = () => {
     navigate('/library');
   };
 
+  const handleAppSettingsChange = (newSettings: Partial<typeof appSettings>) => {
+    dispatch(updateAppSettings(newSettings));
+    
+    // If backend endpoint changed, update the API client
+    if (newSettings.backendEndpoint) {
+      updateApiBaseUrl(newSettings.backendEndpoint);
+    }
+  };
+
   const currentPage = currentManga?.currentPageIndex ?? 0;
   const totalPages = currentManga?.totalPages ?? 0;
 
@@ -211,9 +223,11 @@ const MainLayout: React.FC = () => {
         open={settingsDialogOpen}
         settings={settings}
         currentProfile={currentProfile}
+        appSettings={appSettings}
         onClose={handleSettingsClose}
         onSettingsChange={(newSettings) => dispatch(updateSettings(newSettings))}
         onProfileChange={(profile) => dispatch(switchProfile(profile))}
+        onAppSettingsChange={handleAppSettingsChange}
         onSaveSettings={() => {
           if (authToken) {
             dispatch(saveSettings({

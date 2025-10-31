@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { loginUser, registerUser } from '../../store/auth.thunks';
 import { clearError } from '../../store/auth.slice';
+import { updateAppSettings } from '../../store/app-settings.slice';
+import { updateApiBaseUrl } from '../../api/api-client';
 import LoginPage from '../pure/LoginPage';
 import RegisterPage from '../pure/RegisterPage';
 
@@ -11,6 +13,7 @@ const AuthPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { error, isLoading } = useAppSelector((state) => state.auth);
+  const appSettings = useAppSelector((state) => state.appSettings.settings);
 
   const handleLogin = async (username: string, password: string) => {
     try {
@@ -35,6 +38,11 @@ const AuthPage: React.FC = () => {
     setIsLogin(!isLogin);
   };
 
+  const handleBackendEndpointChange = (endpoint: string) => {
+    dispatch(updateAppSettings({ backendEndpoint: endpoint }));
+    updateApiBaseUrl(endpoint);
+  };
+
   if (isLogin) {
     return (
       <LoginPage
@@ -42,6 +50,8 @@ const AuthPage: React.FC = () => {
         onSwitchToRegister={handleSwitchMode}
         error={error}
         isLoading={isLoading}
+        backendEndpoint={appSettings.backendEndpoint}
+        onBackendEndpointChange={handleBackendEndpointChange}
       />
     );
   }

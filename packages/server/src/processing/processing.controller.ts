@@ -12,12 +12,22 @@ import {
   Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProcessingService } from './processing.service';
 
 class UploadCbzDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   mangaTitle?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseInt(value, 10) : undefined))
+  @IsNumber()
   volumeNumber?: number;
 }
 

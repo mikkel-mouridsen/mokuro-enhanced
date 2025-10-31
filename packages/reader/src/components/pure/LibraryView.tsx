@@ -23,6 +23,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MangaCard from './MangaCard';
 import { LibraryManga } from '../../store/library.model';
 import { UploadButton } from './UploadButton';
+import { BulkImportButton } from './BulkImportButton';
 import { Button } from '@mui/material';
 
 export interface LibraryViewProps {
@@ -89,7 +90,10 @@ const LibraryView: React.FC<LibraryViewProps> = ({
         <Typography variant="h5" component="h1" sx={{ flexGrow: 1, fontWeight: 600 }}>
           Library
         </Typography>
-        <UploadButton onUploadComplete={onUploadComplete} />
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <UploadButton onUploadComplete={onUploadComplete} />
+          <BulkImportButton onImportComplete={onUploadComplete} />
+        </Box>
         
         {username && (
           <Box sx={{ ml: 2 }}>
