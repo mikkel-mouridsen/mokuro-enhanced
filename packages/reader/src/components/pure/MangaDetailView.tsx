@@ -23,6 +23,8 @@ export interface MangaDetailViewProps {
   loading: boolean;
   onBack: () => void;
   onVolumeClick: (volumeId: string) => void;
+  onMangaManage?: (mangaId: string) => void;
+  onVolumeManage?: (volumeId: string) => void;
   onUploadComplete?: () => void;
 }
 
@@ -32,6 +34,8 @@ const MangaDetailView: React.FC<MangaDetailViewProps> = ({
   loading,
   onBack,
   onVolumeClick,
+  onMangaManage,
+  onVolumeManage,
   onUploadComplete,
 }) => {
   const getStatusColor = (status: LibraryManga['status']) => {
@@ -73,6 +77,15 @@ const MangaDetailView: React.FC<MangaDetailViewProps> = ({
         <Typography variant="h5" component="h1" sx={{ flexGrow: 1, fontWeight: 600 }}>
           {manga.title}
         </Typography>
+        {onMangaManage && (
+          <Button
+            variant="outlined"
+            onClick={() => onMangaManage(manga.id)}
+            sx={{ mr: 2 }}
+          >
+            Manage Manga
+          </Button>
+        )}
       </Toolbar>
 
       {/* Content */}
@@ -195,7 +208,7 @@ const MangaDetailView: React.FC<MangaDetailViewProps> = ({
               <Grid container spacing={3}>
                 {volumes.map((volume) => (
                   <Grid item xs={6} sm={4} md={3} lg={2} key={volume.id}>
-                    <VolumeCard volume={volume} onClick={onVolumeClick} />
+                    <VolumeCard volume={volume} onClick={onVolumeClick} onManage={onVolumeManage} />
                   </Grid>
                 ))}
               </Grid>

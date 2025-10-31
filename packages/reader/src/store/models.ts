@@ -77,8 +77,18 @@ export interface YomitanState {
   error: string | null;
 }
 
+export enum DeviceProfile {
+  DESKTOP = 'desktop',
+  MOBILE = 'mobile',
+}
+
 export interface SettingsState {
   settings: ReaderSettings;
+  currentProfile: DeviceProfile;
+  desktopSettings: ReaderSettings;
+  mobileSettings: ReaderSettings;
+  isLoading: boolean;
+  error: string | null;
 }
 
 export interface UIState {

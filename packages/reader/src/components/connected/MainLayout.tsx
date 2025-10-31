@@ -15,10 +15,11 @@ import {
   setSidebarOpen,
   setSettingsDialogOpen,
 } from '../../store/ui.slice';
-import { updateSettings } from '../../store/settings.slice';
+import { updateSettings, switchProfile, loadSettings, saveSettings } from '../../store/settings.slice';
 import { toggleYomitan } from '../../store/yomitan.slice';
 import { openMangaFolder, loadVolumeFromLibrary } from '../../store/reader.thunks';
 import { checkYomitanStatus, installYomitan } from '../../store/yomitan.thunks';
+import { DeviceProfile } from '../../store/models';
 
 const MainLayout: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -33,16 +34,42 @@ const MainLayout: React.FC = () => {
   const settingsDialogOpen = useAppSelector((state) => state.ui.settingsDialogOpen);
   const fullscreen = useAppSelector((state) => state.ui.fullscreen);
   const settings = useAppSelector((state) => state.settings.settings);
+  const currentProfile = useAppSelector((state) => state.settings.currentProfile);
+  const authToken = useAppSelector((state) => state.auth.token);
   const yomitanStatus = useAppSelector((state) => state.yomitan.status);
   const yomitanInstalling = useAppSelector((state) => state.yomitan.installing);
   const yomitanError = useAppSelector((state) => state.yomitan.error);
 
   const [yomitanDialogOpen, setYomitanDialogOpen] = React.useState(false);
+  const [hasLoadedSettings, setHasLoadedSettings] = React.useState(false);
 
   // Initialize Yomitan status check
   useEffect(() => {
     dispatch(checkYomitanStatus());
   }, [dispatch]);
+
+  // Load settings on startup
+  useEffect(() => {
+    if (authToken && !hasLoadedSettings) {
+      dispatch(loadSettings(authToken));
+      setHasLoadedSettings(true);
+    }
+  }, [authToken, hasLoadedSettings, dispatch]);
+
+  // Auto-save settings when they change (debounced)
+  useEffect(() => {
+    if (!authToken || !hasLoadedSettings) return;
+
+    const timeoutId = setTimeout(() => {
+      dispatch(saveSettings({
+        token: authToken,
+        profile: currentProfile,
+        settings,
+      }));
+    }, 1000); // Debounce for 1 second
+
+    return () => clearTimeout(timeoutId);
+  }, [settings, currentProfile, authToken, hasLoadedSettings, dispatch]);
 
   // Load volume from URL parameters
   useEffect(() => {
@@ -183,8 +210,19 @@ const MainLayout: React.FC = () => {
       <SettingsDialog
         open={settingsDialogOpen}
         settings={settings}
+        currentProfile={currentProfile}
         onClose={handleSettingsClose}
         onSettingsChange={(newSettings) => dispatch(updateSettings(newSettings))}
+        onProfileChange={(profile) => dispatch(switchProfile(profile))}
+        onSaveSettings={() => {
+          if (authToken) {
+            dispatch(saveSettings({
+              token: authToken,
+              profile: currentProfile,
+              settings,
+            }));
+          }
+        }}
       />
 
       {/* Yomitan Dialog */}

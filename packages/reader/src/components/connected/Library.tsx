@@ -3,11 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import LibraryView from '../pure/LibraryView';
 import MangaDetailView from '../pure/MangaDetailView';
 import ProfileDialog from '../pure/ProfileDialog';
+import MangaManagementDialog from '../pure/MangaManagementDialog';
+import VolumeManagementDialog from '../pure/VolumeManagementDialog';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchLibraryMangas, fetchMangaVolumes, openVolume } from '../../store/library.thunks';
 import { setSelectedManga, updateVolumeProcessingStatus } from '../../store/library.slice';
 import { logoutUser, updateUserProfile, uploadProfilePicture } from '../../store/auth.thunks';
 import { useProgressUpdates, ProgressUpdate } from '../../hooks/useProgressUpdates';
+import * as LibraryManagementAPI from '../../api/library-management';
 
 const Library: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -16,6 +19,8 @@ const Library: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [managingMangaId, setManagingMangaId] = useState<string | null>(null);
+  const [managingVolumeId, setManagingVolumeId] = useState<string | null>(null);
 
   // Selectors
   const mangas = useAppSelector((state) => state.library.mangas);
@@ -24,6 +29,7 @@ const Library: React.FC = () => {
   const error = useAppSelector((state) => state.library.error);
   const selectedMangaId = useAppSelector((state) => state.library.selectedMangaId);
   const user = useAppSelector((state) => state.auth.user);
+  const authToken = useAppSelector((state) => state.auth.token);
   const authLoading = useAppSelector((state) => state.auth.isLoading);
   const authError = useAppSelector((state) => state.auth.error);
 
@@ -127,21 +133,135 @@ const Library: React.FC = () => {
     await dispatch(uploadProfilePicture(file));
   };
 
+  // Management handlers
+  const handleMangaManage = (mangaId: string) => {
+    setManagingMangaId(mangaId);
+  };
+
+  const handleVolumeManage = (volumeId: string) => {
+    setManagingVolumeId(volumeId);
+  };
+
+  const handleMangaSave = async (mangaId: string, data: Partial<any>) => {
+    if (!authToken) return;
+    try {
+      await LibraryManagementAPI.updateManga(authToken, mangaId, data);
+      dispatch(fetchLibraryMangas());
+    } catch (error) {
+      console.error('Failed to update manga:', error);
+    }
+  };
+
+  const handleMangaDelete = async (mangaId: string) => {
+    if (!authToken) return;
+    
+    // Close dialog immediately
+    setManagingMangaId(null);
+    
+    try {
+      await LibraryManagementAPI.deleteManga(authToken, mangaId);
+      dispatch(fetchLibraryMangas());
+      navigate('/library');
+    } catch (error) {
+      console.error('Failed to delete manga:', error);
+    }
+  };
+
+  const handleVolumeSave = async (volumeId: string, data: Partial<any>) => {
+    if (!authToken) return;
+    try {
+      await LibraryManagementAPI.updateVolume(authToken, volumeId, data);
+      if (selectedMangaId) {
+        dispatch(fetchMangaVolumes(selectedMangaId));
+      }
+    } catch (error) {
+      console.error('Failed to update volume:', error);
+    }
+  };
+
+  const handleVolumeDelete = async (volumeId: string) => {
+    if (!authToken) return;
+    
+    // Close dialog immediately to prevent re-render issues
+    setManagingVolumeId(null);
+    
+    try {
+      await LibraryManagementAPI.deleteVolume(authToken, volumeId);
+      if (selectedMangaId) {
+        dispatch(fetchMangaVolumes(selectedMangaId));
+      }
+      dispatch(fetchLibraryMangas());
+    } catch (error) {
+      console.error('Failed to delete volume:', error);
+    }
+  };
+
+  const handleVolumeMove = async (volumeId: string, targetMangaId: string, newVolumeNumber?: number) => {
+    if (!authToken) return;
+    
+    // Close dialog immediately to prevent re-render issues during refresh
+    setManagingVolumeId(null);
+    
+    try {
+      await LibraryManagementAPI.moveVolume(authToken, volumeId, {
+        targetMangaId,
+        newVolumeNumber,
+      });
+      
+      // Refresh both source and target manga
+      dispatch(fetchLibraryMangas());
+      
+      if (selectedMangaId) {
+        dispatch(fetchMangaVolumes(selectedMangaId));
+      }
+      
+      // Also refresh target manga volumes if different
+      if (targetMangaId !== selectedMangaId) {
+        dispatch(fetchMangaVolumes(targetMangaId));
+      }
+    } catch (error: any) {
+      console.error('Failed to move volume:', error);
+      alert(`Failed to move volume: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   // Get selected manga data
   const selectedManga = mangas.find((m) => m.id === selectedMangaId);
   const selectedVolumes = selectedMangaId ? volumes[selectedMangaId] || [] : [];
+  
+  // Get managing manga/volume data
+  const managingManga = managingMangaId ? mangas.find((m) => m.id === managingMangaId) : null;
+  
+  // Find managing volume by searching through all manga volumes
+  const managingVolume = managingVolumeId 
+    ? Object.values(volumes).flat().find((v: any) => v.id === managingVolumeId) || null
+    : null;
 
   // Show manga detail view if manga is selected
   if (mangaId && selectedManga) {
     return (
-      <MangaDetailView
-        manga={selectedManga}
-        volumes={selectedVolumes}
-        loading={loading}
-        onBack={handleBack}
-        onVolumeClick={handleVolumeClick}
-        onUploadComplete={handleUploadComplete}
-      />
+      <>
+        <MangaDetailView
+          manga={selectedManga}
+          volumes={selectedVolumes}
+          loading={loading}
+          onBack={handleBack}
+          onVolumeClick={handleVolumeClick}
+          onUploadComplete={handleUploadComplete}
+          onMangaManage={handleMangaManage}
+          onVolumeManage={handleVolumeManage}
+        />
+        
+        <VolumeManagementDialog
+          open={!!managingVolumeId}
+          volume={managingVolume as any}
+          allMangas={mangas.map(m => ({ id: m.id, title: m.title }))}
+          onClose={() => setManagingVolumeId(null)}
+          onSave={handleVolumeSave}
+          onDelete={handleVolumeDelete}
+          onMove={handleVolumeMove}
+        />
+      </>
     );
   }
 
@@ -155,6 +275,7 @@ const Library: React.FC = () => {
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onMangaClick={handleMangaClick}
+        onMangaManage={handleMangaManage}
         onUploadComplete={handleUploadComplete}
         onRetry={handleRetry}
         username={user?.username}
@@ -171,6 +292,14 @@ const Library: React.FC = () => {
         onUploadProfilePicture={handleUploadProfilePicture}
         isLoading={authLoading}
         error={authError}
+      />
+
+      <MangaManagementDialog
+        open={!!managingMangaId}
+        manga={managingManga as any}
+        onClose={() => setManagingMangaId(null)}
+        onSave={handleMangaSave}
+        onDelete={handleMangaDelete}
       />
     </>
   );

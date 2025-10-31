@@ -174,8 +174,18 @@ const ReaderView: React.FC<ReaderViewProps> = ({
   
   // Get the pages to display
   const getPagesToDisplay = () => {
+    const hasCover = settings?.hasCover ?? false;
+    
     if (!isDoublePageMode) {
       return [pages[currentPageIndex]];
+    }
+    
+    // In double page mode with cover:
+    // - First page (index 0) should be shown alone as it's the cover
+    // - Subsequent pages should be paired starting from page 2
+    if (hasCover && currentPageIndex === 0) {
+      // Show cover page alone
+      return [pages[0]];
     }
     
     // In double page mode, show current and next page
@@ -367,7 +377,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPageIndex, pages.length, settings?.readingDirection, settings?.pageLayout]);
+  }, [currentPageIndex, pages.length, settings?.readingDirection, settings?.pageLayout, settings?.hasCover]);
 
   // Reset image loaded state when page changes
   useEffect(() => {
@@ -377,7 +387,21 @@ const ReaderView: React.FC<ReaderViewProps> = ({
   const handlePreviousPage = () => {
     const isRTL = settings?.readingDirection === 'rtl';
     const isDouble = settings?.pageLayout === 'double';
-    const step = isDouble ? 2 : 1;
+    const hasCover = settings?.hasCover ?? false;
+    
+    // Calculate step based on current position and cover setting
+    let step = isDouble ? 2 : 1;
+    
+    // Special handling for cover page in double page mode
+    if (isDouble && hasCover) {
+      if (currentPageIndex === 1) {
+        // Going back from page 1 to cover (page 0)
+        step = 1;
+      } else if (currentPageIndex === 0) {
+        // Already at cover, can't go back
+        step = 0;
+      }
+    }
     
     if (isRTL) {
       // In RTL, previous means going forward (right to left reading)
@@ -397,7 +421,16 @@ const ReaderView: React.FC<ReaderViewProps> = ({
   const handleNextPage = () => {
     const isRTL = settings?.readingDirection === 'rtl';
     const isDouble = settings?.pageLayout === 'double';
-    const step = isDouble ? 2 : 1;
+    const hasCover = settings?.hasCover ?? false;
+    
+    // Calculate step based on current position and cover setting
+    let step = isDouble ? 2 : 1;
+    
+    // Special handling for cover page in double page mode
+    if (isDouble && hasCover && currentPageIndex === 0) {
+      // Going from cover (page 0) to page 1
+      step = 1;
+    }
     
     if (isRTL) {
       // In RTL, next means going backward (right to left reading)
@@ -466,7 +499,12 @@ const ReaderView: React.FC<ReaderViewProps> = ({
   // Helper to check if we can navigate
   const canNavigateNext = () => {
     const isRTL = settings?.readingDirection === 'rtl';
-    const step = isDoublePageMode ? 2 : 1;
+    const hasCover = settings?.hasCover ?? false;
+    
+    let step = isDoublePageMode ? 2 : 1;
+    if (isDoublePageMode && hasCover && currentPageIndex === 0) {
+      step = 1;
+    }
     
     if (isRTL) {
       return currentPageIndex - step >= 0;
@@ -477,7 +515,12 @@ const ReaderView: React.FC<ReaderViewProps> = ({
 
   const canNavigatePrevious = () => {
     const isRTL = settings?.readingDirection === 'rtl';
-    const step = isDoublePageMode ? 2 : 1;
+    const hasCover = settings?.hasCover ?? false;
+    
+    let step = isDoublePageMode ? 2 : 1;
+    if (isDoublePageMode && hasCover && (currentPageIndex === 0 || currentPageIndex === 1)) {
+      step = currentPageIndex === 0 ? 0 : 1;
+    }
     
     if (isRTL) {
       return currentPageIndex + step < pages.length;

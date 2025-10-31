@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Delete,
   Param,
   Body,
   UploadedFile,
@@ -17,6 +19,8 @@ import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nes
 import { LibraryService } from './library.service';
 import { CreateMangaDto } from './dto/create-manga.dto';
 import { UploadVolumeDto } from './dto/upload-volume.dto';
+import { UpdateMangaDto } from './dto/update-manga.dto';
+import { UpdateVolumeDto, MoveVolumeDto } from './dto/update-volume.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('library')
@@ -60,6 +64,23 @@ export class LibraryController {
     return this.libraryService.createManga(createMangaDto, req.user.userId);
   }
 
+  @Put('manga/:id')
+  @ApiOperation({ summary: 'Update manga information' })
+  async updateManga(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateMangaDto: UpdateMangaDto,
+    @Request() req,
+  ) {
+    return this.libraryService.updateManga(id, updateMangaDto, req.user.userId);
+  }
+
+  @Delete('manga/:id')
+  @ApiOperation({ summary: 'Delete a manga and all its volumes' })
+  async deleteManga(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    await this.libraryService.deleteManga(id, req.user.userId);
+    return { message: 'Manga deleted successfully' };
+  }
+
   // ==================== VOLUME ENDPOINTS ====================
 
   @Get('manga/:mangaId/volumes')
@@ -75,6 +96,31 @@ export class LibraryController {
   @ApiOperation({ summary: 'Get volume by ID' })
   async getVolumeById(@Param('id', ParseUUIDPipe) id: string) {
     return this.libraryService.findVolumeById(id);
+  }
+
+  @Put('volumes/:id')
+  @ApiOperation({ summary: 'Update volume information' })
+  async updateVolume(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateVolumeDto: UpdateVolumeDto,
+  ) {
+    return this.libraryService.updateVolume(id, updateVolumeDto);
+  }
+
+  @Delete('volumes/:id')
+  @ApiOperation({ summary: 'Delete a volume and all its pages' })
+  async deleteVolume(@Param('id', ParseUUIDPipe) id: string) {
+    await this.libraryService.deleteVolume(id);
+    return { message: 'Volume deleted successfully' };
+  }
+
+  @Post('volumes/:id/move')
+  @ApiOperation({ summary: 'Move a volume to a different manga' })
+  async moveVolume(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() moveVolumeDto: MoveVolumeDto,
+  ) {
+    return this.libraryService.moveVolume(id, moveVolumeDto);
   }
 
   @Post('volumes/upload')

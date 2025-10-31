@@ -20,8 +20,12 @@ import {
   Tab,
   Divider,
   TextField,
+  ToggleButtonGroup,
+  ToggleButton,
+  Chip,
 } from '@mui/material';
-import { ReaderSettings } from '../../store/models';
+import { Smartphone, Computer } from '@mui/icons-material';
+import { ReaderSettings, DeviceProfile } from '../../store/models';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -47,15 +51,21 @@ function TabPanel(props: TabPanelProps) {
 export interface SettingsDialogProps {
   open: boolean;
   settings: ReaderSettings;
+  currentProfile: DeviceProfile;
   onClose: () => void;
   onSettingsChange: (settings: Partial<ReaderSettings>) => void;
+  onProfileChange: (profile: DeviceProfile) => void;
+  onSaveSettings?: () => void;
 }
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({
   open,
   settings,
+  currentProfile,
   onClose,
   onSettingsChange,
+  onProfileChange,
+  onSaveSettings,
 }) => {
   const [currentTab, setCurrentTab] = React.useState(0);
 
@@ -67,9 +77,43 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
     onSettingsChange({ [key]: value });
   };
 
+  const handleProfileChange = (_event: React.MouseEvent<HTMLElement>, newProfile: DeviceProfile | null) => {
+    if (newProfile !== null) {
+      onProfileChange(newProfile);
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Reader Settings</DialogTitle>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Reader Settings</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Profile:
+            </Typography>
+            <ToggleButtonGroup
+              value={currentProfile}
+              exclusive
+              onChange={handleProfileChange}
+              size="small"
+              aria-label="device profile"
+            >
+              <ToggleButton value={DeviceProfile.DESKTOP} aria-label="desktop">
+                <Computer sx={{ mr: 0.5 }} fontSize="small" />
+                Desktop
+              </ToggleButton>
+              <ToggleButton value={DeviceProfile.MOBILE} aria-label="mobile">
+                <Smartphone sx={{ mr: 0.5 }} fontSize="small" />
+                Mobile
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          Settings are saved separately for each profile and automatically persisted.
+        </Typography>
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={currentTab} onChange={handleTabChange}>
@@ -285,6 +329,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </TabPanel>
       </DialogContent>
       <DialogActions>
+        {onSaveSettings && (
+          <Button onClick={onSaveSettings} variant="contained" color="primary">
+            Save Settings
+          </Button>
+        )}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>

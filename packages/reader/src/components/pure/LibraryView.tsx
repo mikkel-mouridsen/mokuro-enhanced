@@ -32,6 +32,7 @@ export interface LibraryViewProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onMangaClick: (mangaId: string) => void;
+  onMangaManage?: (mangaId: string) => void;
   onUploadComplete?: () => void;
   onRetry?: () => void;
   username?: string;
@@ -47,6 +48,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
   searchQuery,
   onSearchChange,
   onMangaClick,
+  onMangaManage,
   onUploadComplete,
   onRetry,
   username,
@@ -193,7 +195,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             <Grid container spacing={3}>
               {mangas.map((manga) => (
                 <Grid item xs={6} sm={4} md={3} lg={2} key={manga.id}>
-                  <MangaCard manga={manga} onClick={onMangaClick} />
+                  <MangaCard manga={manga} onClick={onMangaClick} onManage={onMangaManage} />
                 </Grid>
               ))}
             </Grid>

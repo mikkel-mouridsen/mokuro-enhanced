@@ -1,13 +1,22 @@
 import React from 'react';
-import { Card, CardActionArea, CardContent, CardMedia, Typography, Box, Chip, CircularProgress, LinearProgress } from '@mui/material';
+import { Card, CardActionArea, CardContent, CardMedia, Typography, Box, Chip, CircularProgress, LinearProgress, IconButton } from '@mui/material';
+import { MoreVert } from '@mui/icons-material';
 import { LibraryManga } from '../../store/library.model';
 
 export interface MangaCardProps {
   manga: LibraryManga;
   onClick: (mangaId: string) => void;
+  onManage?: (mangaId: string) => void;
 }
 
-const MangaCard: React.FC<MangaCardProps> = ({ manga, onClick }) => {
+const MangaCard: React.FC<MangaCardProps> = ({ manga, onClick, onManage }) => {
+  const handleManageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onManage) {
+      onManage(manga.id);
+    }
+  };
+
   const getStatusColor = (status: LibraryManga['status']) => {
     switch (status) {
       case 'ongoing':
@@ -115,6 +124,26 @@ const MangaCard: React.FC<MangaCardProps> = ({ manga, onClick }) => {
               fontWeight: 'bold',
             }}
           />
+          
+          {/* Manage Button */}
+          {onManage && (
+            <IconButton
+              onClick={handleManageClick}
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                left: 4,
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                },
+              }}
+            >
+              <MoreVert fontSize="small" />
+            </IconButton>
+          )}
           
           {/* Processing indicator overlay at bottom */}
           {manga.processingCount && manga.processingCount > 0 && (

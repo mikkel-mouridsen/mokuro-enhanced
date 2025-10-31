@@ -9,13 +9,16 @@ import {
   Chip,
   LinearProgress,
   CircularProgress,
+  IconButton,
   keyframes,
 } from '@mui/material';
+import { MoreVert } from '@mui/icons-material';
 import { MangaVolume } from '../../store/library.model';
 
 export interface VolumeCardProps {
   volume: MangaVolume;
   onClick: (volumeId: string) => void;
+  onManage?: (volumeId: string) => void;
 }
 
 // Animated pulse for processing indicator
@@ -31,7 +34,14 @@ const pulse = keyframes`
   }
 `;
 
-const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick }) => {
+const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick, onManage }) => {
+  const handleManageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onManage) {
+      onManage(volume.id);
+    }
+  };
+
   const getStatusColor = (status?: string) => {
     switch (status) {
       case 'processing':
@@ -139,6 +149,26 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick }) => {
                 fontWeight: 'bold',
               }}
             />
+          )}
+
+          {/* Manage Button */}
+          {onManage && !isProcessing && (
+            <IconButton
+              onClick={handleManageClick}
+              size="small"
+              sx={{
+                position: 'absolute',
+                bottom: 4,
+                right: 4,
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                },
+              }}
+            >
+              <MoreVert fontSize="small" />
+            </IconButton>
           )}
 
           {/* Processing overlay */}

@@ -191,5 +191,58 @@ export class StorageService {
     }
     throw new Error(`Storage type ${this.storageType} not implemented`);
   }
+
+  /**
+   * Delete a directory
+   */
+  async deleteDirectory(relativePath: string): Promise<void> {
+    return this.delete(relativePath);
+  }
+
+  /**
+   * Move a file or directory
+   */
+  async move(sourcePath: string, destinationPath: string): Promise<void> {
+    if (this.storageType === 'local') {
+      const fullSourcePath = path.join(this.storagePath, sourcePath);
+      const fullDestPath = path.join(this.storagePath, destinationPath);
+      
+      this.logger.log(`🔍 Move operation: ${fullSourcePath} -> ${fullDestPath}`);
+      
+      if (!existsSync(fullSourcePath)) {
+        this.logger.error(`❌ Source path does not exist: ${fullSourcePath}`);
+        throw new Error(`Source path does not exist: ${fullSourcePath}`);
+      }
+
+      this.logger.log(`✅ Source exists, checking destination directory...`);
+      
+      const destDir = path.dirname(fullDestPath);
+      if (!existsSync(destDir)) {
+        this.logger.log(`📁 Creating destination directory: ${destDir}`);
+        await fs.mkdir(destDir, { recursive: true });
+      }
+
+      this.logger.log(`🚀 Performing rename/move...`);
+      await fs.rename(fullSourcePath, fullDestPath);
+      this.logger.log(`✅ Successfully moved: ${fullSourcePath} -> ${fullDestPath}`);
+      
+      // Verify the move
+      if (existsSync(fullDestPath)) {
+        this.logger.log(`✅ Verified: Destination exists at ${fullDestPath}`);
+      } else {
+        this.logger.error(`❌ CRITICAL: Move appeared to succeed but destination doesn't exist!`);
+      }
+      
+      return;
+    }
+    throw new Error(`Storage type ${this.storageType} not implemented`);
+  }
+
+  /**
+   * Move a directory
+   */
+  async moveDirectory(sourcePath: string, destinationPath: string): Promise<void> {
+    return this.move(sourcePath, destinationPath);
+  }
 }
 

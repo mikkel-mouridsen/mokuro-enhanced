@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -13,6 +13,8 @@ import { StorageService } from '../storage/storage.service';
 import { VolumeUploadedEvent } from './events/volume-uploaded.event';
 import { VolumeProcessedEvent } from './events/volume-processed.event';
 import { CreateMangaDto } from './dto/create-manga.dto';
+import { UpdateMangaDto } from './dto/update-manga.dto';
+import { UpdateVolumeDto, MoveVolumeDto } from './dto/update-volume.dto';
 
 @Injectable()
 export class LibraryService {
@@ -74,13 +76,58 @@ export class LibraryService {
     });
   }
 
+  async updateManga(id: string, updateDto: UpdateMangaDto, userId: string): Promise<Manga> {
+    const manga = await this.findMangaById(id, userId);
+    
+    // Update fields
+    Object.assign(manga, updateDto);
+    
+    return this.mangaRepository.save(manga);
+  }
+
+  async deleteManga(id: string, userId: string): Promise<void> {
+    const manga = await this.findMangaById(id, userId);
+    
+    // Delete all volumes and their files
+    const volumes = await this.volumeRepository.find({
+      where: { mangaId: id },
+    });
+
+    for (const volume of volumes) {
+      if (volume.storagePath) {
+        try {
+          await this.storageService.deleteDirectory(volume.storagePath);
+        } catch (error) {
+          this.logger.warn(`Failed to delete storage for volume ${volume.id}: ${error.message}`);
+        }
+      }
+    }
+
+    // Delete manga directory if exists
+    try {
+      await this.storageService.deleteDirectory(`manga/${id}`);
+    } catch (error) {
+      this.logger.warn(`Failed to delete manga directory: ${error.message}`);
+    }
+
+    // Delete from database (cascades to volumes and pages)
+    await this.mangaRepository.remove(manga);
+    
+    this.logger.log(`Deleted manga ${id} with ${volumes.length} volumes`);
+  }
+
   // ==================== VOLUME OPERATIONS ====================
 
   async findVolumesByMangaId(mangaId: string): Promise<Volume[]> {
-    return this.volumeRepository.find({
+    const volumes = await this.volumeRepository.find({
       where: { mangaId },
       order: { volumeNumber: 'ASC' },
     });
+    this.logger.log(`📋 Finding volumes for manga ${mangaId}: Found ${volumes.length} volumes`);
+    volumes.forEach(v => {
+      this.logger.log(`   - Volume ${v.volumeNumber}: ID=${v.id}, MangaID=${v.mangaId}, Path=${v.storagePath}`);
+    });
+    return volumes;
   }
 
   async findVolumeById(id: string): Promise<Volume> {
@@ -94,6 +141,174 @@ export class LibraryService {
     }
 
     return volume;
+  }
+
+  async updateVolume(id: string, updateDto: UpdateVolumeDto): Promise<Volume> {
+    const volume = await this.findVolumeById(id);
+    
+    // Update fields
+    Object.assign(volume, updateDto);
+    
+    const updatedVolume = await this.volumeRepository.save(volume);
+    
+    // Update manga stats
+    await this.updateMangaStats(volume.mangaId);
+    
+    return updatedVolume;
+  }
+
+  async deleteVolume(id: string): Promise<void> {
+    const volume = await this.findVolumeById(id);
+    const mangaId = volume.mangaId;
+    
+    // Delete volume files
+    if (volume.storagePath) {
+      try {
+        await this.storageService.deleteDirectory(volume.storagePath);
+      } catch (error) {
+        this.logger.warn(`Failed to delete storage for volume ${id}: ${error.message}`);
+      }
+    }
+    
+    // Delete from database (cascades to pages)
+    await this.volumeRepository.remove(volume);
+    
+    // Update manga stats
+    await this.updateMangaStats(mangaId);
+    
+    this.logger.log(`Deleted volume ${id}`);
+  }
+
+  async moveVolume(id: string, moveDto: MoveVolumeDto): Promise<Volume> {
+    const volume = await this.findVolumeById(id);
+    const sourceMangaId = volume.mangaId;
+    
+    // Verify target manga exists
+    const targetManga = await this.mangaRepository.findOne({
+      where: { id: moveDto.targetMangaId },
+    });
+
+    if (!targetManga) {
+      throw new NotFoundException(`Target manga with ID ${moveDto.targetMangaId} not found`);
+    }
+
+    // Check if volume number conflicts in target manga
+    if (moveDto.newVolumeNumber !== undefined) {
+      const existingVolume = await this.volumeRepository.findOne({
+        where: {
+          mangaId: moveDto.targetMangaId,
+          volumeNumber: moveDto.newVolumeNumber,
+        },
+      });
+
+      if (existingVolume) {
+        throw new ForbiddenException(
+          `Volume number ${moveDto.newVolumeNumber} already exists in target manga`
+        );
+      }
+    }
+
+    // Calculate new volume number
+    const newVolumeNumber = moveDto.newVolumeNumber !== undefined 
+      ? moveDto.newVolumeNumber 
+      : volume.volumeNumber;
+
+    // Move storage files FIRST
+    let newStoragePath = volume.storagePath;
+    let newCoverUrl = volume.coverUrl;
+    
+    if (volume.storagePath) {
+      newStoragePath = `manga/${moveDto.targetMangaId}/volume-${newVolumeNumber}`;
+      try {
+        await this.storageService.moveDirectory(volume.storagePath, newStoragePath);
+        this.logger.log(`✅ Files moved from ${volume.storagePath} to ${newStoragePath}`);
+        
+        // Update cover URL if it exists
+        if (volume.coverUrl) {
+          const coverFileName = path.basename(volume.coverUrl.split('?')[0]); // Remove query params
+          const newCoverPath = `${newStoragePath}/${coverFileName}`;
+          newCoverUrl = this.storageService.getFileUrl(newCoverPath);
+          this.logger.log(`✅ Cover URL updated to: ${newCoverUrl}`);
+        }
+        
+        // Update page URLs
+        const pages = await this.pageRepository.find({
+          where: { volumeId: id },
+        });
+
+        for (const page of pages) {
+          const oldPath = page.imagePath;
+          const fileName = path.basename(oldPath);
+          const newPath = `${newStoragePath}/${fileName}`;
+          page.imagePath = newPath;
+          page.imageUrl = this.storageService.getFileUrl(newPath);
+        }
+
+        await this.pageRepository.save(pages);
+        this.logger.log(`✅ Updated ${pages.length} page URLs for moved volume`);
+      } catch (error) {
+        this.logger.error(`Failed to move storage: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // Now update the volume in database using QueryBuilder for explicit control
+    this.logger.log(`🔄 Updating volume ${id} in database...`);
+    this.logger.log(`   - Old mangaId: ${volume.mangaId} -> New mangaId: ${moveDto.targetMangaId}`);
+    this.logger.log(`   - Old volumeNumber: ${volume.volumeNumber} -> New volumeNumber: ${newVolumeNumber}`);
+    this.logger.log(`   - Old storagePath: ${volume.storagePath} -> New storagePath: ${newStoragePath}`);
+    this.logger.log(`   - Old coverUrl: ${volume.coverUrl} -> New coverUrl: ${newCoverUrl}`);
+    
+    await this.volumeRepository
+      .createQueryBuilder()
+      .update(Volume)
+      .set({
+        mangaId: moveDto.targetMangaId,
+        volumeNumber: newVolumeNumber,
+        storagePath: newStoragePath,
+        coverUrl: newCoverUrl,
+      })
+      .where('id = :id', { id })
+      .execute();
+    
+    this.logger.log(`✅ Database update executed`);
+    
+    // Update stats for both mangas
+    await this.updateMangaStats(sourceMangaId);
+    await this.updateMangaStats(moveDto.targetMangaId);
+    
+    // Update target manga cover if it doesn't have one
+    if (!targetManga.coverUrl && newCoverUrl) {
+      targetManga.coverUrl = newCoverUrl;
+      await this.mangaRepository.save(targetManga);
+      this.logger.log(`✅ Updated target manga cover URL`);
+    }
+    
+    // Reload the volume from database to ensure we return the updated data
+    const movedVolume = await this.volumeRepository.findOne({
+      where: { id },
+    });
+    
+    if (!movedVolume) {
+      throw new Error(`Failed to reload moved volume ${id}`);
+    }
+    
+    this.logger.log(`✅ Successfully moved volume ${id} from manga ${sourceMangaId} to ${moveDto.targetMangaId}`);
+    this.logger.log(`   📊 Reloaded volume data from database:`);
+    this.logger.log(`      - mangaId: ${movedVolume.mangaId} (expected: ${moveDto.targetMangaId})`);
+    this.logger.log(`      - volumeNumber: ${movedVolume.volumeNumber} (expected: ${newVolumeNumber})`);
+    this.logger.log(`      - storagePath: ${movedVolume.storagePath} (expected: ${newStoragePath})`);
+    this.logger.log(`      - coverUrl: ${movedVolume.coverUrl}`);
+    
+    // Verify the move was successful
+    if (movedVolume.mangaId !== moveDto.targetMangaId) {
+      this.logger.error(`❌ CRITICAL: Volume mangaId was not updated! Still shows: ${movedVolume.mangaId}`);
+      throw new Error(`Failed to update volume mangaId to ${moveDto.targetMangaId}`);
+    }
+    
+    this.logger.log(`✅ Volume move verified successfully!`);
+    
+    return movedVolume;
   }
 
   // ==================== UPLOAD OPERATIONS ====================
