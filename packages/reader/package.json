@@ -61,7 +61,19 @@
     },
     "files": [
       "dist/**/*",
-      "public/assets/icon/icon-512.png"
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "yomitan",
+        "to": "yomitan",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "public/assets/icon",
+        "to": "assets/icon",
+        "filter": ["**/*"]
+      }
     ],
     "win": {
       "target": [
@@ -73,13 +85,15 @@
       "target": [
         "dmg"
       ],
-      "icon": "public/assets/icon/icon-512.png"
+      "icon": "public/assets/icon/icon-512.png",
+      "category": "public.app-category.entertainment"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "icon": "public/assets/icon/icon-512.png"
+      "icon": "public/assets/icon/icon-512.png",
+      "category": "Utility"
     }
   }
 }
