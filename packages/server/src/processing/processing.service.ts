@@ -77,6 +77,7 @@ export class ProcessingService {
       // Update existing volume
       volume.status = VolumeStatus.PROCESSING;
       volume.progress = 0;
+      volume.processingMessage = 'Starting processing...';
     } else {
       // Create new volume
       volume = this.volumeRepository.create({
@@ -85,6 +86,7 @@ export class ProcessingService {
         title: `Volume ${detectedVolumeNumber}`,
         status: VolumeStatus.PROCESSING,
         progress: 0,
+        processingMessage: 'Starting processing...',
       });
     }
 
@@ -143,15 +145,18 @@ export class ProcessingService {
       return;
     }
 
-    // Update volume progress
+    // Update volume progress and message
     volume.progress = update.progress;
+    volume.processingMessage = update.message || '';
 
     if (update.status === 'completed') {
       this.logger.log(`Job ${update.jobId} completed, finalizing volume ${volume.id}`);
+      volume.processingMessage = 'Completed';
       await this.finalizeVolume(volume, update.jobId);
     } else if (update.status === 'failed') {
       this.logger.error(`Job ${update.jobId} failed: ${update.message}`);
       volume.status = VolumeStatus.FAILED;
+      volume.processingMessage = update.message || 'Processing failed';
       await this.volumeRepository.save(volume);
     } else {
       await this.volumeRepository.save(volume);

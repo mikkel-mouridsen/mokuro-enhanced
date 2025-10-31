@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardActionArea, CardContent, CardMedia, Typography, Box, Chip } from '@mui/material';
+import { Card, CardActionArea, CardContent, CardMedia, Typography, Box, Chip, CircularProgress, LinearProgress } from '@mui/material';
 import { LibraryManga } from '../../store/library.model';
 
 export interface MangaCardProps {
@@ -65,8 +65,31 @@ const MangaCard: React.FC<MangaCardProps> = ({ manga, onClick }) => {
               e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="450"%3E%3Crect fill="%23333" width="300" height="450"/%3E%3Ctext fill="%23666" font-family="sans-serif" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Cover%3C/text%3E%3C/svg%3E';
             }}
           />
-          {/* Unread Badge */}
-          {manga.unreadCount > 0 && (
+          {/* Processing Badge - Takes priority if present */}
+          {manga.processingCount && manga.processingCount > 0 ? (
+            <Chip
+              icon={<CircularProgress size={14} sx={{ color: 'white !important' }} />}
+              label={`${manga.processingCount} processing`}
+              color="info"
+              size="small"
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                fontWeight: 'bold',
+                animation: 'pulse 2s ease-in-out infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': {
+                    opacity: 1,
+                  },
+                  '50%': {
+                    opacity: 0.7,
+                  },
+                },
+              }}
+            />
+          ) : manga.unreadCount > 0 ? (
+            /* Unread Badge */
             <Chip
               label={`${manga.unreadCount} unread`}
               color="error"
@@ -78,7 +101,8 @@ const MangaCard: React.FC<MangaCardProps> = ({ manga, onClick }) => {
                 fontWeight: 'bold',
               }}
             />
-          )}
+          ) : null}
+          
           {/* Status Badge */}
           <Chip
             label={getStatusLabel(manga.status)}
@@ -91,6 +115,29 @@ const MangaCard: React.FC<MangaCardProps> = ({ manga, onClick }) => {
               fontWeight: 'bold',
             }}
           />
+          
+          {/* Processing indicator overlay at bottom */}
+          {manga.processingCount && manga.processingCount > 0 && (
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: 'rgba(33, 150, 243, 0.15)',
+                backdropFilter: 'blur(2px)',
+              }}
+            >
+              <LinearProgress 
+                sx={{ 
+                  height: 4,
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: '#2196f3',
+                  }
+                }} 
+              />
+            </Box>
+          )}
         </Box>
 
         {/* Card Content */}

@@ -188,9 +188,8 @@ class MokuroWorker:
                 mokuro_data = json.load(f)
             
             logger.info(f"Successfully processed job {job_id}")
-            self.publish_progress(job_id, 100, "completed", "Processing complete!")
             
-            return {
+            result = {
                 "success": True,
                 "jobId": job_id,
                 "volumeId": volume_id,
@@ -199,16 +198,43 @@ class MokuroWorker:
                 "mokuroData": mokuro_data
             }
             
+            # Store result in Redis BEFORE publishing completion
+            result_key = f"mokuro:result:{job_id}"
+            self.redis_client.setex(
+                result_key,
+                3600,  # Expire after 1 hour
+                json.dumps(result)
+            )
+            logger.info(f"Stored result in Redis: {result_key}")
+            
+            # Now publish completion (server can safely fetch result)
+            self.publish_progress(job_id, 100, "completed", "Processing complete!")
+            
+            return result
+            
         except Exception as e:
             logger.error(f"Error processing job {job_id}: {e}", exc_info=True)
-            self.publish_progress(job_id, 0, "failed", f"Error: {str(e)}")
             
-            return {
+            result = {
                 "success": False,
                 "jobId": job_id,
                 "volumeId": volume_id,
                 "error": str(e)
             }
+            
+            # Store error result in Redis BEFORE publishing failure
+            result_key = f"mokuro:result:{job_id}"
+            self.redis_client.setex(
+                result_key,
+                3600,  # Expire after 1 hour
+                json.dumps(result)
+            )
+            logger.info(f"Stored error result in Redis: {result_key}")
+            
+            # Now publish failure
+            self.publish_progress(job_id, 0, "failed", f"Error: {str(e)}")
+            
+            return result
         
         finally:
             # Cleanup temp directory
@@ -234,16 +260,8 @@ class MokuroWorker:
                     
                     logger.info(f"Received job: {job_data.get('jobId')}")
                     
-                    # Process the job
+                    # Process the job (result is stored in Redis inside process_job)
                     result = self.process_job(job_data)
-                    
-                    # Store result in Redis with expiration
-                    result_key = f"mokuro:result:{job_data['jobId']}"
-                    self.redis_client.setex(
-                        result_key,
-                        3600,  # Expire after 1 hour
-                        json.dumps(result)
-                    )
                     
             except KeyboardInterrupt:
                 logger.info("Shutting down worker...")

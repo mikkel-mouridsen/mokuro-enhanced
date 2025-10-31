@@ -56,6 +56,33 @@ const librarySlice = createSlice({
         }
       }
     },
+    updateVolumeProcessingStatus: (
+      state,
+      action: PayloadAction<{
+        volumeId: string;
+        progress: number;
+        status: 'processing' | 'completed' | 'failed';
+        message?: string;
+      }>
+    ) => {
+      // Find the volume across all mangas
+      Object.keys(state.volumes).forEach((mangaId) => {
+        const volumes = state.volumes[mangaId];
+        const volume = volumes.find((v) => v.id === action.payload.volumeId);
+        if (volume) {
+          volume.progress = action.payload.progress;
+          volume.status = action.payload.status;
+          volume.processingMessage = action.payload.message;
+          
+          // Update manga processing count
+          const manga = state.mangas.find((m) => m.id === mangaId);
+          if (manga) {
+            const processingVolumes = volumes.filter((v) => v.status === 'processing').length;
+            manga.processingCount = processingVolumes;
+          }
+        }
+      });
+    },
   },
 });
 
@@ -68,6 +95,7 @@ export const {
   clearError,
   updateMangaProgress,
   updateVolumeProgress,
+  updateVolumeProcessingStatus,
 } = librarySlice.actions;
 
 export default librarySlice.reducer;

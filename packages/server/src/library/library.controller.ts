@@ -33,7 +33,19 @@ export class LibraryController {
   @Get('manga')
   @ApiOperation({ summary: 'Get all manga in library' })
   async getAllManga(@Request() req) {
-    return this.libraryService.findAllManga(req.user.userId);
+    const mangas = await this.libraryService.findAllManga(req.user.userId);
+    
+    // Add processing count to each manga
+    return Promise.all(mangas.map(async (manga) => {
+      const processingCount = manga.volumes
+        ? manga.volumes.filter(v => v.status === 'processing').length
+        : 0;
+      
+      return {
+        ...manga,
+        processingCount,
+      };
+    }));
   }
 
   @Get('manga/:id')
@@ -53,7 +65,10 @@ export class LibraryController {
   @Get('manga/:mangaId/volumes')
   @ApiOperation({ summary: 'Get all volumes for a manga' })
   async getVolumesByMangaId(@Param('mangaId', ParseUUIDPipe) mangaId: string) {
-    return this.libraryService.findVolumesByMangaId(mangaId);
+    const volumes = await this.libraryService.findVolumesByMangaId(mangaId);
+    
+    // Ensure all volume fields are included in response (status, processingMessage, etc.)
+    return volumes;
   }
 
   @Get('volumes/:id')

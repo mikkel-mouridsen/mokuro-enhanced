@@ -8,13 +8,28 @@ import {
   Box,
   Chip,
   LinearProgress,
+  CircularProgress,
+  keyframes,
 } from '@mui/material';
 import { MangaVolume } from '../../store/library.model';
 
 export interface VolumeCardProps {
-  volume: MangaVolume & { status?: 'uploaded' | 'processing' | 'completed' | 'failed' };
+  volume: MangaVolume;
   onClick: (volumeId: string) => void;
 }
+
+// Animated pulse for processing indicator
+const pulse = keyframes`
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+`;
 
 const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick }) => {
   const getStatusColor = (status?: string) => {
@@ -138,19 +153,62 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(2px)',
               }}
             >
-              <Box sx={{ width: '80%', textAlign: 'center' }}>
-                <Typography variant="body2" color="white" sx={{ mb: 1 }}>
-                  Processing...
+              <Box sx={{ width: '85%', textAlign: 'center' }}>
+                {/* Spinning indicator */}
+                <CircularProgress 
+                  size={40} 
+                  thickness={4}
+                  sx={{ 
+                    mb: 2,
+                    animation: `${pulse} 1.5s ease-in-out infinite`
+                  }} 
+                />
+                
+                {/* Status message */}
+                <Typography 
+                  variant="body2" 
+                  color="white" 
+                  sx={{ 
+                    mb: 1.5,
+                    fontWeight: 500,
+                    textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                  }}
+                >
+                  {volume.processingMessage || 'Processing...'}
                 </Typography>
+                
+                {/* Progress bar */}
                 <LinearProgress
                   variant="determinate"
                   value={volume.progress || 0}
-                  sx={{ borderRadius: 1 }}
+                  sx={{ 
+                    borderRadius: 1,
+                    height: 6,
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 1,
+                      backgroundColor: '#4caf50',
+                      transition: 'transform 0.5s ease',
+                    }
+                  }}
                 />
-                <Typography variant="caption" color="white" sx={{ mt: 0.5 }}>
+                
+                {/* Progress percentage */}
+                <Typography 
+                  variant="caption" 
+                  color="white" 
+                  sx={{ 
+                    mt: 1,
+                    display: 'block',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                  }}
+                >
                   {Math.round(volume.progress || 0)}%
                 </Typography>
               </Box>
@@ -167,14 +225,42 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick }) => {
                 right: 0,
                 bottom: 0,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(2px)',
+                padding: 2,
               }}
             >
-              <Typography variant="body2" color="error" sx={{ fontWeight: 'bold' }}>
-                Processing Failed
+              <Typography 
+                variant="body2" 
+                color="error" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  mb: 1
+                }}
+              >
+                ⚠️ Processing Failed
               </Typography>
+              {volume.processingMessage && (
+                <Typography 
+                  variant="caption" 
+                  color="white" 
+                  sx={{ 
+                    textAlign: 'center',
+                    maxWidth: '90%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {volume.processingMessage}
+                </Typography>
+              )}
             </Box>
           )}
         </Box>
@@ -197,7 +283,11 @@ const VolumeCard: React.FC<VolumeCardProps> = ({ volume, onClick }) => {
           <Typography variant="body2" color="text.secondary">
             Volume {volume.volumeNumber}
           </Typography>
-          {volume.progress > 0 && volume.progress < 100 && volume.status !== 'processing' && (
+          {/* Only show read progress if not processing/uploading/failed AND volume is completed */}
+          {volume.progress > 0 && 
+           volume.progress < 100 && 
+           volume.status === 'completed' && 
+           !volume.isRead && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {Math.round(volume.progress)}% read
             </Typography>

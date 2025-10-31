@@ -9,6 +9,7 @@ export interface LibraryManga {
   volumeCount: number;
   unreadCount: number;
   lastRead?: Date;
+  processingCount?: number; // Number of volumes currently being processed
 }
 
 export interface MangaVolume {
@@ -20,6 +21,8 @@ export interface MangaVolume {
   chapters: VolumeChapter[];
   isRead: boolean;
   progress: number; // 0-100
+  status?: 'uploaded' | 'processing' | 'completed' | 'failed';
+  processingMessage?: string;
 }
 
 export interface VolumeChapter {

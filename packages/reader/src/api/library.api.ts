@@ -12,6 +12,7 @@ interface MangaResponse {
   volumeCount: number;
   unreadCount: number;
   lastRead?: string;
+  processingCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +26,7 @@ interface VolumeResponse {
   status: 'uploaded' | 'processing' | 'completed' | 'failed';
   isRead: boolean;
   progress: number;
+  processingMessage?: string;
   pageCount: number;
   storagePath?: string;
   createdAt: string;
@@ -44,7 +46,7 @@ interface PageResponse {
 
 // Transform backend response to frontend model
 function transformManga(manga: MangaResponse): LibraryManga {
-  console.log('Transforming manga:', manga.title, 'Cover URL:', manga.coverUrl);
+  console.log('Transforming manga:', manga.title, 'Cover URL:', manga.coverUrl, 'Processing Count:', manga.processingCount);
   return {
     id: manga.id,
     title: manga.title,
@@ -54,11 +56,12 @@ function transformManga(manga: MangaResponse): LibraryManga {
     volumeCount: manga.volumeCount,
     unreadCount: manga.unreadCount,
     lastRead: manga.lastRead ? new Date(manga.lastRead) : undefined,
+    processingCount: manga.processingCount || 0,
   };
 }
 
 function transformVolume(volume: VolumeResponse): MangaVolume {
-  console.log('Transforming volume:', volume.title, 'Cover URL:', volume.coverUrl);
+  console.log('Transforming volume:', volume.title, 'Status:', volume.status, 'Progress:', volume.progress, 'Message:', volume.processingMessage);
   return {
     id: volume.id,
     mangaId: volume.mangaId,
@@ -68,6 +71,8 @@ function transformVolume(volume: VolumeResponse): MangaVolume {
     chapters: [], // We'll populate this from pages if needed
     isRead: volume.isRead,
     progress: volume.progress,
+    status: volume.status,
+    processingMessage: volume.processingMessage,
   };
 }
 

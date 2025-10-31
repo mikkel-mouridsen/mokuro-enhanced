@@ -9,6 +9,7 @@ import { StorageModule } from './storage/storage.module';
 import { FilesModule } from './files/files.module';
 import { QueueModule } from './queue/queue.module';
 import { ProcessingModule } from './processing/processing.module';
+import { ProgressModule } from './progress/progress.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { ProcessingModule } from './processing/processing.module';
     FilesModule,
     QueueModule,
     ProcessingModule,
+    ProgressModule,
   ],
 })
 export class AppModule {}

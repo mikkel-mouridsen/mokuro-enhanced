@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LibraryView from '../pure/LibraryView';
 import MangaDetailView from '../pure/MangaDetailView';
 import ProfileDialog from '../pure/ProfileDialog';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchLibraryMangas, fetchMangaVolumes, openVolume } from '../../store/library.thunks';
-import { setSelectedManga } from '../../store/library.slice';
+import { setSelectedManga, updateVolumeProcessingStatus } from '../../store/library.slice';
 import { logoutUser, updateUserProfile, uploadProfilePicture } from '../../store/auth.thunks';
+import { useProgressUpdates, ProgressUpdate } from '../../hooks/useProgressUpdates';
 
 const Library: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -25,6 +26,26 @@ const Library: React.FC = () => {
   const user = useAppSelector((state) => state.auth.user);
   const authLoading = useAppSelector((state) => state.auth.isLoading);
   const authError = useAppSelector((state) => state.auth.error);
+
+  // Handle progress updates from WebSocket
+  const handleProgressUpdate = useCallback((update: ProgressUpdate) => {
+    console.log('Processing update received in Library:', update);
+    
+    // Refresh library and volumes on any progress update
+    // This ensures we see the latest status and messages
+    dispatch(fetchLibraryMangas());
+    
+    // If we're viewing a manga detail, refresh its volumes too
+    if (selectedMangaId) {
+      dispatch(fetchMangaVolumes(selectedMangaId));
+    }
+  }, [dispatch, selectedMangaId]);
+
+  // Connect to WebSocket for real-time progress updates
+  useProgressUpdates({
+    onProgressUpdate: handleProgressUpdate,
+    autoConnect: true,
+  });
 
   // Load library on mount
   useEffect(() => {
