@@ -23,6 +23,14 @@ const getDefaultSettings = (): ReaderSettings => ({
   defaultZoomMode: 'fit-to-screen',
   eInkMode: false,
   ctrlToPan: false,
+  
+  // Anki integration settings
+  ankiScreenshotEnabled: false, // Disabled by default
+  ankiScreenshotField: 'Picture', // Common field name in Anki note types
+  ankiScreenshotFormat: 'jpeg',
+  ankiScreenshotQuality: 0.8,
+  ankiConnectUrl: 'http://localhost:8765',
+  ankiConnectApiKey: undefined,
 });
 
 const getDefaultMobileSettings = (): ReaderSettings => ({

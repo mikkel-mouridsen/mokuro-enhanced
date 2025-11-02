@@ -59,20 +59,28 @@ const MainLayout: React.FC = () => {
     }
   }, [authToken, hasLoadedSettings, dispatch]);
 
+  // NOTE: Auto-save is disabled because it was causing constant saves
+  // Settings are now saved manually via the Save button in the settings dialog
+  // If you want to re-enable auto-save, uncomment the code below but be careful
+  // about the infinite loop issue
+  
+  /*
   // Auto-save settings when they change (debounced)
   useEffect(() => {
-    if (!authToken || !hasLoadedSettings) return;
+    if (!authToken || !hasLoadedSettings || settingsLoading) return;
 
     const timeoutId = setTimeout(() => {
+      console.log('Auto-saving settings...');
       dispatch(saveSettings({
         token: authToken,
         profile: currentProfile,
         settings,
       }));
-    }, 1000); // Debounce for 1 second
+    }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [settings, currentProfile, authToken, hasLoadedSettings, dispatch]);
+  }, [settings, currentProfile, authToken, hasLoadedSettings, settingsLoading, dispatch]);
+  */
 
   // Load volume from URL parameters
   useEffect(() => {

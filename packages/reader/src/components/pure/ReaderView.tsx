@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, IconButton, Paper, Typography, CircularProgress, useTheme, Tooltip } from '@mui/material';
+import { Box, IconButton, Paper, Typography, CircularProgress, useTheme, Tooltip, Fab } from '@mui/material';
 import {
   NavigateBefore,
   NavigateNext,
@@ -8,9 +8,12 @@ import {
   FitScreen,
   ArrowBack,
   Settings,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import panzoom, { PanZoom } from 'panzoom';
 import { MangaPage, TextBlock, ReaderSettings } from '../../store/models';
+import { useAnkiScreenshot } from '../../hooks/useAnkiScreenshot';
+import { ankiConnectService } from '../../services/anki-connect.service';
 
 export interface ReaderViewProps {
   pages: MangaPage[];
@@ -140,9 +143,60 @@ const ReaderView: React.FC<ReaderViewProps> = ({
   const pagesContainerRef = useRef<HTMLDivElement>(null);
   const panzoomInstance = useRef<PanZoom | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const currentPageImageRef = useRef<HTMLImageElement | null>(null);
+  const [ankiSnackbar, setAnkiSnackbar] = useState<{open: boolean; message: string; severity: 'success' | 'error'}>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const isDoublePageMode = settings?.pageLayout === 'double';
   const isRTL = settings?.readingDirection === 'rtl';
+
+  // Configure AnkiConnect service
+  useEffect(() => {
+    if (settings?.ankiConnectUrl) {
+      ankiConnectService.configure({
+        url: settings.ankiConnectUrl,
+        apiKey: settings.ankiConnectApiKey,
+      });
+    }
+  }, [settings?.ankiConnectUrl, settings?.ankiConnectApiKey]);
+
+  // Set up Anki screenshot functionality
+  const { captureAndAddToLastCard, isProcessing } = useAnkiScreenshot({
+    enabled: settings?.ankiScreenshotEnabled ?? false,
+    fieldName: settings?.ankiScreenshotField ?? 'Picture',
+    imageFormat: settings?.ankiScreenshotFormat ?? 'jpeg',
+    imageQuality: settings?.ankiScreenshotQuality ?? 0.8,
+  });
+
+  // Handle manual Anki screenshot button click
+  const handleAnkiScreenshot = async () => {
+    if (!currentPageImageRef.current) {
+      setAnkiSnackbar({
+        open: true,
+        message: 'Page not loaded yet',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      await captureAndAddToLastCard(currentPageImageRef.current);
+      setAnkiSnackbar({
+        open: true,
+        message: 'Screenshot added to last Anki card!',
+        severity: 'success'
+      });
+    } catch (error) {
+      setAnkiSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Failed to add screenshot',
+        severity: 'error'
+      });
+    }
+  };
 
   // Set up Yomitan event listeners
   useEffect(() => {
@@ -684,6 +738,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
         >
           {displayPages.map((page, idx) => {
             const pageIndex = pages.findIndex(p => p.id === page.id);
+            const isCurrentPage = pageIndex === currentPageIndex;
             return (
               <div
                 key={page.id}
@@ -693,6 +748,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
                 }}
               >
                 <img
+                  ref={isCurrentPage ? currentPageImageRef : undefined}
                   src={page.path}
                   alt={`Page ${pageIndex + 1}`}
                   onLoad={() => {
@@ -712,6 +768,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
                     pointerEvents: 'none',
                   }}
                   draggable={false}
+                  crossOrigin="anonymous"
                 />
                 {imageLoaded && page.textBlocks && (
                   <div
@@ -779,6 +836,46 @@ const ReaderView: React.FC<ReaderViewProps> = ({
           },
         }}
       />
+
+      {/* Anki Screenshot Floating Action Button */}
+      {settings?.ankiScreenshotEnabled && (
+        <Fab
+          color="primary"
+          onClick={handleAnkiScreenshot}
+          disabled={isProcessing}
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 1000,
+          }}
+        >
+          {isProcessing ? <CircularProgress size={24} color="inherit" /> : <ImageIcon />}
+        </Fab>
+      )}
+
+      {/* Snackbar for Anki feedback */}
+      {ankiSnackbar.open && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 80,
+            right: 16,
+            zIndex: 1001,
+            backgroundColor: ankiSnackbar.severity === 'success' 
+              ? theme.palette.success.main 
+              : theme.palette.error.main,
+            color: 'white',
+            padding: 2,
+            borderRadius: 1,
+            boxShadow: 3,
+            maxWidth: 300,
+          }}
+          onClick={() => setAnkiSnackbar({ ...ankiSnackbar, open: false })}
+        >
+          <Typography variant="body2">{ankiSnackbar.message}</Typography>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -55,6 +55,14 @@ export interface ReaderSettings {
   defaultZoomMode: 'fit-to-screen' | 'fit-to-width' | 'original' | 'keep-level';
   eInkMode: boolean;
   ctrlToPan: boolean;
+  
+  // Anki integration settings
+  ankiScreenshotEnabled: boolean;
+  ankiScreenshotField: string; // Name of the Anki field to add screenshot to
+  ankiScreenshotFormat: 'png' | 'jpeg';
+  ankiScreenshotQuality: number; // 0-1 for JPEG quality
+  ankiConnectUrl: string;
+  ankiConnectApiKey?: string;
 }
 
 export interface AppState {
