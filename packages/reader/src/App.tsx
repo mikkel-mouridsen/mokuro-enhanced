@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Provider } from 'react-redux';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './store/store';
 import { darkTheme } from './theme/theme';
 import MainLayout from './components/connected/MainLayout';
@@ -11,10 +11,14 @@ import AuthPage from './components/connected/AuthPage';
 import ProtectedRoute from './components/connected/ProtectedRoute';
 import WelcomeScreen from './components/pure/WelcomeScreen';
 import { getBasePath } from './utils/navigation';
+import { isElectron } from './platform/platform.detector';
 
 const App: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Use HashRouter for Electron, BrowserRouter for Web
+  const Router = isElectron() ? HashRouter : BrowserRouter;
 
   useEffect(() => {
     // Check if this is the first run (no server mode configured)
@@ -79,7 +83,7 @@ const App: React.FC = () => {
     <Provider store={store}>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <BrowserRouter basename={getBasePath()}>
+        <Router basename={isElectron() ? undefined : getBasePath()}>
           <Routes>
             {/* Public Routes */}
             <Route path="/auth" element={<AuthPage />} />
@@ -124,7 +128,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Navigate to="/library" replace />} />
             <Route path="*" element={<Navigate to="/library" replace />} />
           </Routes>
-        </BrowserRouter>
+        </Router>
       </ThemeProvider>
     </Provider>
   );

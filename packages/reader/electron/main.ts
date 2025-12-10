@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, session, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, session, globalShortcut, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { DockerManager } from './docker-manager';
@@ -8,6 +8,13 @@ let yomitanExtension: any = null;
 let dockerManager: DockerManager | null = null;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+// Register file protocol before app is ready
+if (!isDev) {
+  protocol.registerSchemesAsPrivileged([
+    { scheme: 'file', privileges: { secure: true, standard: true, supportFetchAPI: true } }
+  ]);
+}
 
 function createWindow() {
   const iconPath = isDev 
@@ -22,6 +29,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
+      webSecurity: true,
     },
     backgroundColor: '#1a1a1a',
     show: false,
@@ -36,26 +44,29 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
+    // In production, __dirname will be inside app.asar/dist/electron
+    // The renderer files are at app.asar/dist/renderer/index.html
     const htmlPath = path.join(__dirname, '../renderer/index.html');
-    console.log('Loading HTML from:', htmlPath);
+    console.log('Production mode detected');
     console.log('__dirname:', __dirname);
+    console.log('htmlPath:', htmlPath);
+    console.log('app.isPackaged:', app.isPackaged);
     console.log('File exists:', fs.existsSync(htmlPath));
-    
-    // Enable dev tools in production for debugging
-    mainWindow.webContents.openDevTools();
     
     mainWindow.loadFile(htmlPath).catch(err => {
       console.error('Failed to load HTML:', err);
+      // Fallback: try to show an error dialog
+      dialog.showErrorBox('Load Error', `Failed to load application: ${err.message}\n\nPath: ${htmlPath}`);
     });
   }
 
   // Log any loading errors
-  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    console.error('Failed to load:', errorCode, errorDescription);
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', errorCode, errorDescription, validatedURL);
   });
 
-  mainWindow.webContents.on('console-message', (_event, level, message) => {
-    console.log(`Console [${level}]:`, message);
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    console.log(`Console [${level}]:`, message, `(${sourceId}:${line})`);
   });
 
   mainWindow.on('closed', () => {

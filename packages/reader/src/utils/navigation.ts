@@ -11,7 +11,19 @@ import { Platform } from '../platform/platform.types';
  */
 export function getBasePath(): string {
   const platform = detectPlatform();
-  return platform === Platform.WEB ? '/reader' : '';
+  
+  // Desktop (Electron) always uses empty basename
+  if (platform === Platform.ELECTRON) {
+    return '';
+  }
+  
+  // Web uses /reader only if actually served from that path
+  // Check if we're being served from /reader path
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/reader')) {
+    return '/reader';
+  }
+  
+  return '';
 }
 
 /**

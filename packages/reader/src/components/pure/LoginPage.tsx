@@ -83,8 +83,8 @@ const LoginPage: React.FC<LoginPageProps> = ({
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        // Background image
-        backgroundImage: 'url(/assets/images/login-bg.png)',
+        // Background image - use relative path for Electron compatibility
+        backgroundImage: 'url(./assets/images/login-bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
