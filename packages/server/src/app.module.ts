@@ -10,6 +10,7 @@ import { FilesModule } from './files/files.module';
 import { QueueModule } from './queue/queue.module';
 import { ProcessingModule } from './processing/processing.module';
 import { ProgressModule } from './progress/progress.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ProgressModule } from './progress/progress.module';
     ProcessingModule,
     ProgressModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
 

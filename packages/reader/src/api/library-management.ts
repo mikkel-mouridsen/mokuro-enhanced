@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import apiClient from './api-client';
 
 export interface UpdateMangaData {
   title?: string;
@@ -28,8 +26,8 @@ export async function updateManga(
   mangaId: string,
   data: UpdateMangaData
 ) {
-  const response = await axios.put(
-    `${API_URL}/library/manga/${mangaId}`,
+  const response = await apiClient.put(
+    `/library/manga/${mangaId}`,
     data,
     {
       headers: {
@@ -44,7 +42,7 @@ export async function updateManga(
  * Delete a manga and all its volumes
  */
 export async function deleteManga(token: string, mangaId: string) {
-  const response = await axios.delete(`${API_URL}/library/manga/${mangaId}`, {
+  const response = await apiClient.delete(`/library/manga/${mangaId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -60,8 +58,8 @@ export async function updateVolume(
   volumeId: string,
   data: UpdateVolumeData
 ) {
-  const response = await axios.put(
-    `${API_URL}/library/volumes/${volumeId}`,
+  const response = await apiClient.put(
+    `/library/volumes/${volumeId}`,
     data,
     {
       headers: {
@@ -76,8 +74,8 @@ export async function updateVolume(
  * Delete a volume and all its pages
  */
 export async function deleteVolume(token: string, volumeId: string) {
-  const response = await axios.delete(
-    `${API_URL}/library/volumes/${volumeId}`,
+  const response = await apiClient.delete(
+    `/library/volumes/${volumeId}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -95,8 +93,8 @@ export async function moveVolume(
   volumeId: string,
   data: MoveVolumeData
 ) {
-  const response = await axios.post(
-    `${API_URL}/library/volumes/${volumeId}/move`,
+  const response = await apiClient.post(
+    `/library/volumes/${volumeId}/move`,
     data,
     {
       headers: {

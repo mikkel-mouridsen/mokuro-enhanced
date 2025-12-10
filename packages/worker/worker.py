@@ -82,8 +82,8 @@ class MokuroWorker:
     
     def download_file(self, relative_path: str, destination: Path) -> Path:
         """Download file from backend"""
-        # Construct the file URL from relative path
-        file_url = f"{settings.backend_url}/files/{relative_path}"
+        # Construct the file URL from relative path (with /api prefix)
+        file_url = f"{settings.backend_url}/api/files/{relative_path}"
         logger.info(f"Downloading file from: {file_url}")
         
         try:

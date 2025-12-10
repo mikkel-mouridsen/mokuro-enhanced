@@ -19,7 +19,8 @@
     "typeorm": "typeorm-ts-node-commonjs",
     "db:setup": "node scripts/setup-dev-db.js",
     "db:reset": "node scripts/reset-dev-db.js",
-    "user:create": "node scripts/create-admin-user.js"
+    "user:create": "node scripts/create-admin-user.js",
+    "db:migrate-urls": "node scripts/migrate-urls-to-relative.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.921.0",

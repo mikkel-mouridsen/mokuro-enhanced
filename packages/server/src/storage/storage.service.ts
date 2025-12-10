@@ -143,15 +143,34 @@ export class StorageService {
   }
 
   /**
-   * Get URL for accessing a file
+   * Get URL for accessing a file (DEPRECATED - returns relative path)
+   * @deprecated Use getRelativeFileUrl instead
    */
   getFileUrl(relativePath: string): string {
+    return this.getRelativeFileUrl(relativePath);
+  }
+
+  /**
+   * Get relative URL path for accessing a file (without base URL)
+   * Frontend will construct full URL using configured API base URL
+   */
+  getRelativeFileUrl(relativePath: string): string {
     if (this.storageType === 'local') {
-      // For local storage, we'll serve files through the API
+      // Return relative path that will be served through /api/files endpoint
+      return `/api/files/${relativePath}`;
+    }
+    // TODO: For S3, return the S3 URL
+    throw new Error(`Storage type ${this.storageType} not implemented`);
+  }
+
+  /**
+   * Get absolute URL for accessing a file (for backward compatibility)
+   */
+  getAbsoluteFileUrl(relativePath: string): string {
+    if (this.storageType === 'local') {
       const baseUrl = this.configService.get('API_BASE_URL', 'http://localhost:3000');
       return `${baseUrl}/files/${relativePath}`;
     }
-    // TODO: For S3, return the S3 URL
     throw new Error(`Storage type ${this.storageType} not implemented`);
   }
 

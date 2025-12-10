@@ -48,6 +48,9 @@ export class Volume {
   @Column({ type: 'float', default: 0 })
   progress: number; // 0-100
 
+  @Column({ default: 0 })
+  currentPage: number; // Last page the user was on (0-based index)
+
   @Column({ nullable: true })
   processingMessage: string; // Current processing status message
 

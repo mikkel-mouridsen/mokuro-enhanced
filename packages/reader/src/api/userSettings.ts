@@ -1,7 +1,5 @@
-import axios from 'axios';
+import apiClient from './api-client';
 import { ReaderSettings } from '../store/models';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export enum DeviceProfile {
   DESKTOP = 'desktop',
@@ -25,7 +23,7 @@ export async function getUserSettings(
   profile?: DeviceProfile
 ): Promise<UserSettingsResponse | UserSettingsResponse[]> {
   const params = profile ? { profile } : {};
-  const response = await axios.get(`${API_URL}/user-settings`, {
+  const response = await apiClient.get('/user-settings', {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -42,8 +40,8 @@ export async function updateUserSettings(
   profile: DeviceProfile,
   settings: ReaderSettings
 ): Promise<UserSettingsResponse> {
-  const response = await axios.put(
-    `${API_URL}/user-settings`,
+  const response = await apiClient.put(
+    '/user-settings',
     {
       profile,
       settings,
@@ -64,7 +62,7 @@ export async function resetUserSettings(
   token: string,
   profile: DeviceProfile
 ): Promise<UserSettingsResponse> {
-  const response = await axios.delete(`${API_URL}/user-settings`, {
+  const response = await apiClient.delete('/user-settings', {
     headers: {
       Authorization: `Bearer ${token}`,
     },

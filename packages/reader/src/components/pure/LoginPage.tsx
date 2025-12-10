@@ -12,7 +12,7 @@ import {
   IconButton,
   Collapse,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Settings as SettingsIcon } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Settings as SettingsIcon, Dns as DnsIcon } from '@mui/icons-material';
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -21,6 +21,9 @@ interface LoginPageProps {
   isLoading: boolean;
   backendEndpoint?: string;
   onBackendEndpointChange?: (endpoint: string) => void;
+  serverMode?: 'cloud' | 'standalone' | 'offline';
+  showServerManagement?: boolean;
+  onOpenServerManagement?: () => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({
@@ -30,6 +33,9 @@ const LoginPage: React.FC<LoginPageProps> = ({
   isLoading,
   backendEndpoint = 'http://localhost:3000',
   onBackendEndpointChange,
+  serverMode = 'cloud',
+  showServerManagement = false,
+  onOpenServerManagement,
 }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -77,8 +83,8 @@ const LoginPage: React.FC<LoginPageProps> = ({
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        // Background image
-        backgroundImage: 'url(/assets/images/login-bg.png)',
+        // Background image - use relative path for Electron compatibility
+        backgroundImage: 'url(./assets/images/login-bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -130,6 +136,27 @@ const LoginPage: React.FC<LoginPageProps> = ({
             {displayError && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {displayError}
+              </Alert>
+            )}
+
+            {/* Standalone Mode Notice */}
+            {serverMode === 'standalone' && showServerManagement && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Standalone Mode:</strong> Start your local server before logging in.
+                </Typography>
+                {onOpenServerManagement && (
+                  <Button
+                    startIcon={<DnsIcon />}
+                    onClick={onOpenServerManagement}
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    sx={{ mt: 1 }}
+                  >
+                    Manage Server
+                  </Button>
+                )}
               </Alert>
             )}
 

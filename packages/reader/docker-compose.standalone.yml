@@ -1,0 +1,119 @@
+# Standalone Docker Compose for Mokuro Enhanced Desktop Reader
+# This configuration runs the full server stack locally for users without cloud infrastructure
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mokuro-standalone-postgres
+    environment:
+      POSTGRES_USER: mokuro
+      POSTGRES_PASSWORD: mokuro_local_pass
+      POSTGRES_DB: mokuro_enhanced
+    ports:
+      - '5432:5432'
+    volumes:
+      - mokuro_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mokuro']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mokuro-standalone
+
+  redis:
+    image: redis:7-alpine
+    container_name: mokuro-standalone-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - mokuro_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mokuro-standalone
+
+  server:
+    image: ghcr.io/mikkel-mouridsen/mokuro-enhanced-server:latest
+    container_name: mokuro-standalone-server
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: mokuro
+      DATABASE_PASSWORD: mokuro_local_pass
+      DATABASE_NAME: mokuro_enhanced
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: standalone-local-secret-change-if-exposed
+      JWT_EXPIRES_IN: 30d
+      STORAGE_TYPE: local
+      STORAGE_PATH: /data/uploads
+      CORS_ORIGIN: '*'
+    ports:
+      - '3000:3000'
+    volumes:
+      - mokuro_uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mokuro-standalone
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/mikkel-mouridsen/mokuro-enhanced-worker:latest
+    container_name: mokuro-standalone-worker
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      TEMP_DIR: /data/temp
+      BACKEND_URL: http://server:3000
+      MOKURO_MODEL: kha-white/manga-ocr-base
+      FORCE_CPU: ${FORCE_CPU:-false}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - mokuro_worker_temp:/data/temp
+    depends_on:
+      - redis
+      - server
+    networks:
+      - mokuro-standalone
+    restart: unless-stopped
+    # GPU support (optional - will fall back to CPU if not available)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  mokuro_postgres_data:
+    name: mokuro_standalone_postgres
+  mokuro_redis_data:
+    name: mokuro_standalone_redis
+  mokuro_uploads:
+    name: mokuro_standalone_uploads
+  mokuro_worker_temp:
+    name: mokuro_standalone_worker_temp
+
+networks:
+  mokuro-standalone:
+    name: mokuro-standalone-network
+    driver: bridge
+

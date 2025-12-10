@@ -13,11 +13,9 @@ const getBackendEndpoint = (): string => {
   return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 };
 
-const API_BASE_URL = getBackendEndpoint();
-
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getBackendEndpoint() + '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -26,8 +24,10 @@ const apiClient: AxiosInstance = axios.create({
 
 // Function to update the baseURL dynamically
 export const updateApiBaseUrl = (newBaseUrl: string): void => {
-  apiClient.defaults.baseURL = newBaseUrl;
-  console.log('API base URL updated to:', newBaseUrl);
+  // Ensure we append /api to the base URL
+  const fullUrl = newBaseUrl.endsWith('/api') ? newBaseUrl : `${newBaseUrl}/api`;
+  apiClient.defaults.baseURL = fullUrl;
+  console.log('API base URL updated to:', fullUrl);
 };
 
 // Request interceptor
@@ -38,6 +38,10 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Debug logging
+    console.log('🔵 API Request:', config.method?.toUpperCase(), config.baseURL + config.url);
+    
     return config;
   },
   (error) => {

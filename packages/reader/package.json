@@ -9,13 +9,18 @@
     "url": "https://github.com/mikkel-mouridsen/mokuro-enhanced.git"
   },
   "scripts": {
-    "dev": "npm run build:electron-dev && concurrently \"npm run dev:react\" \"npm run dev:electron\"",
-    "dev:react": "vite",
+    "dev": "npm run dev:desktop",
+    "dev:desktop": "npm run build:electron-dev && concurrently \"npm run dev:react:desktop\" \"npm run dev:electron\"",
+    "dev:web": "vite --config vite.config.web.ts --host",
+    "dev:react:desktop": "vite --config vite.config.desktop.ts",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
-    "build": "npm run build:electron-prod && npm run build:react && electron-builder",
-    "build:react": "vite build",
+    "build": "npm run build:desktop",
+    "build:desktop": "npm run build:electron-prod && npm run build:react:desktop && electron-builder",
+    "build:web": "vite build --config vite.config.web.ts --mode production",
+    "build:react:desktop": "vite build --config vite.config.desktop.ts",
     "build:electron-dev": "tsc -p tsconfig.electron.json",
     "build:electron-prod": "tsc -p tsconfig.electron.json",
+    "preview:web": "vite preview --config vite.config.web.ts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext ts,tsx"
   },
@@ -25,9 +30,12 @@
     "@mui/icons-material": "^5.14.19",
     "@mui/material": "^5.14.20",
     "@reduxjs/toolkit": "^2.0.1",
+    "@types/jszip": "^3.4.0",
     "adm-zip": "^0.5.10",
     "axios": "^1.6.2",
+    "jszip": "^3.10.1",
     "panzoom": "^9.4.3",
+    "qrcode": "^1.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-redux": "^9.0.4",
@@ -38,6 +46,7 @@
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",
     "@types/node": "^20.10.5",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
@@ -56,6 +65,7 @@
   "build": {
     "appId": "com.mokuro-enhanced.reader",
     "productName": "Mokuro Enhanced Reader",
+    "asar": true,
     "directories": {
       "output": "release"
     },
@@ -67,17 +77,36 @@
       {
         "from": "yomitan",
         "to": "yomitan",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "public/assets/icon",
         "to": "assets/icon",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "docker-compose.standalone.yml",
+        "to": "."
       }
     ],
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "public/assets/icon/icon-512.png"
     },

@@ -4,6 +4,7 @@
  */
 
 import { libraryApi } from '../api/library.api';
+import { getPlatformAPI } from '../platform';
 
 export interface BulkImportItem {
   path: string;
@@ -37,11 +38,20 @@ export interface BulkImportProgress {
 }
 
 export class BulkImportService {
+  private platformAPI = getPlatformAPI();
+
+  /**
+   * Check if bulk import is supported on this platform
+   */
+  isSupported(): boolean {
+    return this.platformAPI.isElectron;
+  }
+
   /**
    * Check if electron API is available
    */
   private checkElectronAPI() {
-    if (!window.electronAPI || !window.electronAPI.scanDirectoryForManga) {
+    if (!this.platformAPI.isElectron || !this.platformAPI.scanDirectoryForManga) {
       throw new Error('File system access not available. This feature requires the desktop app.');
     }
   }
@@ -56,7 +66,7 @@ export class BulkImportService {
     this.checkElectronAPI();
     
     try {
-      const items = await window.electronAPI.scanDirectoryForManga(directoryPath, recursive);
+      const items = await this.platformAPI.scanDirectoryForManga!(directoryPath, recursive);
       return items;
     } catch (error) {
       console.error('Error scanning directory:', error);
@@ -69,7 +79,7 @@ export class BulkImportService {
    */
   private async createMokuroZip(item: BulkImportItem): Promise<Blob> {
     this.checkElectronAPI();
-    const buffer = await window.electronAPI.createMokuroZip(item.path);
+    const buffer = await this.platformAPI.createMokuroZip!(item.path);
     // Convert Uint8Array to ArrayBuffer for Blob
     return new Blob([buffer.buffer as ArrayBuffer], { type: 'application/zip' });
   }
@@ -79,7 +89,7 @@ export class BulkImportService {
    */
   private async createImagesZip(item: BulkImportItem): Promise<Blob> {
     this.checkElectronAPI();
-    const buffer = await window.electronAPI.createImagesZip(item.path);
+    const buffer = await this.platformAPI.createImagesZip!(item.path);
     // Convert Uint8Array to ArrayBuffer for Blob
     return new Blob([buffer.buffer as ArrayBuffer], { type: 'application/x-cbz' });
   }
@@ -89,7 +99,7 @@ export class BulkImportService {
    */
   private async readCbzFile(filePath: string): Promise<Blob> {
     this.checkElectronAPI();
-    const buffer = await window.electronAPI.readFileAsBuffer(filePath);
+    const buffer = await this.platformAPI.readFileAsBuffer!(filePath);
     // Convert Uint8Array to ArrayBuffer for Blob
     return new Blob([buffer.buffer as ArrayBuffer], { type: 'application/x-cbz' });
   }

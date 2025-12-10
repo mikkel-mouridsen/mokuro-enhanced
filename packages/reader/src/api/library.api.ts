@@ -26,6 +26,7 @@ interface VolumeResponse {
   status: 'uploaded' | 'processing' | 'completed' | 'failed';
   isRead: boolean;
   progress: number;
+  currentPage: number;
   processingMessage?: string;
   pageCount: number;
   storagePath?: string;
@@ -61,7 +62,7 @@ function transformManga(manga: MangaResponse): LibraryManga {
 }
 
 function transformVolume(volume: VolumeResponse): MangaVolume {
-  console.log('Transforming volume:', volume.title, 'Status:', volume.status, 'Progress:', volume.progress, 'Message:', volume.processingMessage);
+  console.log('Transforming volume:', volume.title, 'Status:', volume.status, 'Progress:', volume.progress, 'Current Page:', volume.currentPage, 'Message:', volume.processingMessage);
   return {
     id: volume.id,
     mangaId: volume.mangaId,
@@ -71,6 +72,7 @@ function transformVolume(volume: VolumeResponse): MangaVolume {
     chapters: [], // We'll populate this from pages if needed
     isRead: volume.isRead,
     progress: volume.progress,
+    currentPage: volume.currentPage || 0,
     status: volume.status,
     processingMessage: volume.processingMessage,
   };
@@ -167,14 +169,44 @@ export const libraryApi = {
     return response.data;
   },
 
+  async exportVolume(volumeId: string): Promise<void> {
+    const response = await apiClient.get<{
+      buffer: string;
+      filename: string;
+      contentType: string;
+    }>(`/library/volumes/${volumeId}/export`);
+
+    // Convert base64 buffer to blob
+    const base64 = response.data.buffer;
+    const binaryString = window.atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: response.data.contentType });
+
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = response.data.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
   // Page endpoints
   async getPagesByVolumeId(volumeId: string): Promise<PageResponse[]> {
     const response = await apiClient.get<PageResponse[]>(`/library/volumes/${volumeId}/pages`);
     return response.data;
   },
 
-  async markPageAsRead(pageId: string): Promise<PageResponse> {
-    const response = await apiClient.post<PageResponse>(`/library/pages/${pageId}/mark-read`);
+  async markPageAsRead(pageId: string, currentPageIndex?: number): Promise<PageResponse> {
+    const response = await apiClient.post<PageResponse>(
+      `/library/pages/${pageId}/mark-read`,
+      { currentPageIndex }
+    );
     return response.data;
   },
 

@@ -1,13 +1,56 @@
+# This .dockerignore is at the root level
+# The actual build context is ./packages - see packages/.dockerignore
+
+# Development and reference directories
+inspiration/
+example_data/
+
+# Dependencies
 node_modules
 npm-debug.log
+
+# Build output
 dist
+*.tsbuildinfo
+
+# User data - NEVER include in Docker image
+uploads
+temp
+
+# Tests
+coverage
+*.spec.ts
+test
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
 .git
 .gitignore
-README.md
+.gitattributes
+
+# Environment - NEVER include in Docker image
 .env
-.env.local
-.DS_Store
+.env.*
+
+# Logs
+logs
 *.log
-temp
-uploads
+
+# Documentation
+README.md
+*.md
+!packages/*/README.md
+
+# CI/CD
+.github
 

@@ -26,6 +26,7 @@ import {
 import { FolderOpen, CloudUpload } from '@mui/icons-material';
 import { bulkImportService, BulkImportItem, BulkImportResult } from '../../services/bulkImport.service';
 import { libraryApi } from '../../api/library.api';
+import { getPlatformAPI } from '../../platform';
 
 export interface BulkImportDialogProps {
   open: boolean;
@@ -38,6 +39,7 @@ const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
   onClose, 
   onImportComplete 
 }) => {
+  const platformAPI = getPlatformAPI();
   const [directoryPath, setDirectoryPath] = useState('');
   const [recursive, setRecursive] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -72,8 +74,8 @@ const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
   const handleSelectDirectory = async () => {
     try {
       // Check if running in Electron
-      if (window.electronAPI?.openFolderDialog) {
-        const path = await window.electronAPI.openFolderDialog();
+      if (platformAPI.isElectron && platformAPI.openFolderDialog) {
+        const path = await platformAPI.openFolderDialog();
         if (path) {
           setDirectoryPath(path);
           setError('');
@@ -237,7 +239,7 @@ const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                   fullWidth
                   disabled={scanning || importing}
                   InputProps={{
-                    readOnly: !!window.electronAPI,
+                    readOnly: platformAPI.isElectron,
                     endAdornment: (
                       <Button
                         startIcon={<FolderOpen />}

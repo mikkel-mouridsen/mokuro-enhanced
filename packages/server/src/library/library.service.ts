@@ -548,18 +548,27 @@ export class LibraryService {
     return this.pageRepository.save(page);
   }
 
-  async updateVolumeProgress(volumeId: string): Promise<void> {
+  async updateVolumeProgress(volumeId: string, currentPageNumber?: number): Promise<void> {
     const pages = await this.pageRepository.find({
       where: { volumeId },
+      order: { pageNumber: 'ASC' },
     });
 
     const readPages = pages.filter((p) => p.isRead).length;
     const progress = pages.length > 0 ? (readPages / pages.length) * 100 : 0;
     const isRead = progress === 100;
 
+    // Find the last read page (highest page number that's marked as read)
+    const lastReadPage = pages.filter(p => p.isRead).pop();
+    const lastReadPageIndex = lastReadPage ? lastReadPage.pageNumber - 1 : 0; // Convert to 0-based index
+
+    // Use provided currentPageNumber if available, otherwise use last read page
+    const currentPage = currentPageNumber !== undefined ? currentPageNumber : lastReadPageIndex;
+
     await this.volumeRepository.update(volumeId, {
       progress,
       isRead,
+      currentPage,
     });
 
     // Update manga stats
@@ -575,6 +584,91 @@ export class LibraryService {
         lastRead: new Date(),
       });
     }
+  }
+
+  // ==================== EXPORT OPERATIONS ====================
+
+  /**
+   * Export a volume as a zip file containing images and .mokuro file
+   */
+  async exportVolume(volumeId: string): Promise<Buffer> {
+    this.logger.log(`Exporting volume ${volumeId}`);
+
+    // Fetch volume with manga and pages
+    const volume = await this.volumeRepository.findOne({
+      where: { id: volumeId },
+      relations: ['manga', 'pages'],
+    });
+
+    if (!volume) {
+      throw new NotFoundException(`Volume with ID ${volumeId} not found`);
+    }
+
+    if (!volume.pages || volume.pages.length === 0) {
+      throw new Error('Volume has no pages to export');
+    }
+
+    // Create a zip file
+    const zip = new AdmZip();
+
+    // Determine folder name for the volume
+    const folderName = `${volume.manga.title.replace(/[^a-zA-Z0-9-_]/g, '_')}-${String(volume.volumeNumber).padStart(2, '0')}`;
+
+    // Add images to zip
+    for (const page of volume.pages) {
+      try {
+        const imageBuffer = await this.storageService.readFile(page.imagePath);
+        const imageName = path.basename(page.imagePath);
+        zip.addFile(`${folderName}/${imageName}`, imageBuffer);
+        this.logger.log(`Added image: ${imageName}`);
+      } catch (error) {
+        this.logger.error(`Failed to add image ${page.imagePath}: ${error.message}`);
+        throw new Error(`Failed to read image: ${page.imagePath}`);
+      }
+    }
+
+    // Generate .mokuro file content
+    const mokuroData = {
+      version: volume.metadata?.version || '0.1.0',
+      title: volume.manga.title,
+      title_uuid: volume.manga.id,
+      volume: volume.title,
+      volume_uuid: volume.id,
+      pages: volume.pages.map((page) => ({
+        img_path: path.basename(page.imagePath),
+        blocks: page.textBlocks?.blocks || [],
+        img_width: page.textBlocks?.img_width || 0,
+        img_height: page.textBlocks?.img_height || 0,
+        version: page.textBlocks?.version || '0.1.0',
+      })),
+    };
+
+    // Add .mokuro file to zip
+    const mokuroFileName = `${folderName}.mokuro`;
+    const mokuroContent = JSON.stringify(mokuroData, null, 2);
+    zip.addFile(mokuroFileName, Buffer.from(mokuroContent, 'utf-8'));
+    this.logger.log(`Added mokuro file: ${mokuroFileName}`);
+
+    // Add cover image if available
+    if (volume.coverUrl) {
+      try {
+        // Extract relative path from cover URL
+        const coverPath = volume.coverUrl.split('/files/')[1];
+        if (coverPath) {
+          const coverBuffer = await this.storageService.readFile(coverPath);
+          zip.addFile('cover.jpg', coverBuffer);
+          this.logger.log('Added cover image');
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to add cover image: ${error.message}`);
+        // Cover is optional, so we don't throw an error
+      }
+    }
+
+    const zipBuffer = zip.toBuffer();
+    this.logger.log(`Successfully created zip file for volume ${volumeId}, size: ${zipBuffer.length} bytes`);
+    
+    return zipBuffer;
   }
 }
 

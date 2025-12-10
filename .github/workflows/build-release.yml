@@ -73,6 +73,8 @@ jobs:
         run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ensure production build
+          NODE_ENV: production
 
       - name: Upload artifacts - Windows
         if: matrix.platform == 'windows'

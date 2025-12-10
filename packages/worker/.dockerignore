@@ -1,14 +1,51 @@
+# Worker-specific .dockerignore
+# Python OCR worker
+
+# Python cache
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Python build
 *.so
 *.egg
 *.egg-info
 dist
 build
+
+# Environment files - CRITICAL: Never include secrets
 .env
 .venv
-venv
+.env.local
+.env.*.local
+
+# IDE files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+
+# Documentation
+README.md
+*.md
 
