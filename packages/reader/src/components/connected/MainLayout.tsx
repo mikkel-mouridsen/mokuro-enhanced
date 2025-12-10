@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
-import { Box } from '@mui/material';
+import React, { useEffect, useCallback } from 'react';
+import { Box, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import TopBar from '../pure/TopBar';
 import Sidebar from '../pure/Sidebar';
 import ReaderView from '../pure/ReaderView';
 import SettingsDialog from '../pure/SettingsDialog';
 import YomitanDialog from '../pure/YomitanDialog';
+import ServerManagement from './ServerManagement';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { nextPage, previousPage, setCurrentPage } from '../../store/reader.slice';
+import { nextPage, previousPage, setCurrentPage, setCurrentManga } from '../../store/reader.slice';
 import {
   toggleSidebar,
   toggleSettingsDialog,
@@ -19,7 +21,7 @@ import { updateSettings, switchProfile, loadSettings, saveSettings } from '../..
 import { updateAppSettings } from '../../store/app-settings.slice';
 import { updateApiBaseUrl } from '../../api/api-client';
 import { toggleYomitan } from '../../store/yomitan.slice';
-import { openMangaFolder, loadVolumeFromLibrary } from '../../store/reader.thunks';
+import { openMangaFolder, loadVolumeFromLibrary, markPageAsReadThunk } from '../../store/reader.thunks';
 import { checkYomitanStatus, installYomitan } from '../../store/yomitan.thunks';
 import { DeviceProfile } from '../../store/models';
 
@@ -44,7 +46,13 @@ const MainLayout: React.FC = () => {
   const appSettings = useAppSelector((state) => state.appSettings.settings);
 
   const [yomitanDialogOpen, setYomitanDialogOpen] = React.useState(false);
+  const [serverDialogOpen, setServerDialogOpen] = React.useState(false);
   const [hasLoadedSettings, setHasLoadedSettings] = React.useState(false);
+  const [isInitialSettingsLoad, setIsInitialSettingsLoad] = React.useState(true);
+  
+  // Use ref to track last saved settings to prevent infinite loops
+  const lastSavedSettingsRef = React.useRef<string | null>(null);
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Initialize Yomitan status check
   useEffect(() => {
@@ -59,28 +67,65 @@ const MainLayout: React.FC = () => {
     }
   }, [authToken, hasLoadedSettings, dispatch]);
 
-  // NOTE: Auto-save is disabled because it was causing constant saves
-  // Settings are now saved manually via the Save button in the settings dialog
-  // If you want to re-enable auto-save, uncomment the code below but be careful
-  // about the infinite loop issue
-  
-  /*
-  // Auto-save settings when they change (debounced)
+  // Initialize the lastSavedSettingsRef after settings are loaded (only once)
   useEffect(() => {
-    if (!authToken || !hasLoadedSettings || settingsLoading) return;
+    if (hasLoadedSettings && isInitialSettingsLoad) {
+      // Give a small delay to ensure Redux state is updated with loaded settings
+      const timeoutId = setTimeout(() => {
+        lastSavedSettingsRef.current = JSON.stringify(settings);
+        setIsInitialSettingsLoad(false);
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [hasLoadedSettings, isInitialSettingsLoad, settings]);
 
-    const timeoutId = setTimeout(() => {
+  // Auto-save settings when they change (debounced with change detection)
+  useEffect(() => {
+    // Only auto-save if:
+    // 1. User is authenticated
+    // 2. Settings have been loaded at least once
+    // 3. We're not in the initial load phase
+    // 4. Settings have actually changed from last saved state
+    if (!authToken || !hasLoadedSettings || isInitialSettingsLoad) {
+      return;
+    }
+
+    const currentSettingsString = JSON.stringify(settings);
+    
+    // Check if settings actually changed
+    if (lastSavedSettingsRef.current === currentSettingsString) {
+      return;
+    }
+
+    // Clear any pending save timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounce the save operation
+    saveTimeoutRef.current = setTimeout(() => {
       console.log('Auto-saving settings...');
+      
+      // Update the last saved reference before dispatching
+      lastSavedSettingsRef.current = currentSettingsString;
+      
       dispatch(saveSettings({
         token: authToken,
         profile: currentProfile,
         settings,
-      }));
-    }, 2000);
+      })).catch((error) => {
+        console.error('Failed to auto-save settings:', error);
+        // Reset the ref so it will retry on next change
+        lastSavedSettingsRef.current = null;
+      });
+    }, 1500); // 1.5 second debounce
 
-    return () => clearTimeout(timeoutId);
-  }, [settings, currentProfile, authToken, hasLoadedSettings, settingsLoading, dispatch]);
-  */
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [settings, currentProfile, authToken, hasLoadedSettings, isInitialSettingsLoad, dispatch]);
 
   // Load volume from URL parameters
   useEffect(() => {
@@ -89,13 +134,66 @@ const MainLayout: React.FC = () => {
     }
   }, [mangaId, volumeId, dispatch]);
 
+  // Cleanup reader state when component unmounts (navigating away from reader)
+  useEffect(() => {
+    return () => {
+      // Clear the current manga when leaving the reader
+      // This ensures a fresh state when returning to the reader
+      dispatch(setCurrentManga(null));
+    };
+  }, [dispatch]);
+
+  // Handlers - defined before useEffect to avoid hoisting issues
+  const handlePageSelect = useCallback((pageIndex: number) => {
+    // Check if this is a library volume (not a local folder)
+    if (currentManga && mangaId && volumeId) {
+      // This is a library volume - mark page as read
+      const page = currentManga.pages[pageIndex];
+      if (page && page.id) {
+        dispatch(markPageAsReadThunk({ pageId: page.id, pageIndex }));
+      } else {
+        // Fallback if page data is incomplete
+        dispatch(setCurrentPage(pageIndex));
+      }
+    } else {
+      // This is a local folder - just change page without tracking
+      dispatch(setCurrentPage(pageIndex));
+    }
+  }, [currentManga, mangaId, volumeId, dispatch]);
+
+  const handleNextPage = useCallback(() => {
+    if (currentManga && mangaId && volumeId) {
+      // Library volume - use handlePageSelect to mark as read
+      const nextIndex = Math.min(currentManga.currentPageIndex + 1, currentManga.totalPages - 1);
+      if (nextIndex !== currentManga.currentPageIndex) {
+        handlePageSelect(nextIndex);
+      }
+    } else {
+      // Local folder - just navigate
+      dispatch(nextPage());
+    }
+  }, [currentManga, mangaId, volumeId, handlePageSelect, dispatch]);
+
+  const handlePreviousPage = useCallback(() => {
+    if (currentManga && mangaId && volumeId) {
+      // Library volume - use handlePageSelect to mark as read
+      const prevIndex = Math.max(currentManga.currentPageIndex - 1, 0);
+      if (prevIndex !== currentManga.currentPageIndex) {
+        handlePageSelect(prevIndex);
+      }
+    } else {
+      // Local folder - just navigate
+      dispatch(previousPage());
+    }
+  }, [currentManga, mangaId, volumeId, handlePageSelect, dispatch]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') {
-        dispatch(nextPage());
+        handleNextPage();
       } else if (e.key === 'ArrowLeft') {
-        dispatch(previousPage());
+        handlePreviousPage();
       } else if (e.key === 'f' && e.ctrlKey) {
         e.preventDefault();
         dispatch(toggleFullscreen());
@@ -104,9 +202,9 @@ const MainLayout: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [dispatch]);
+  }, [dispatch, handleNextPage, handlePreviousPage]);
 
-  // Handlers
+  // Other handlers
   const handleOpenFolder = () => {
     dispatch(openMangaFolder());
   };
@@ -121,18 +219,6 @@ const MainLayout: React.FC = () => {
 
   const handleToggleFullscreen = () => {
     dispatch(toggleFullscreen());
-  };
-
-  const handleNextPage = () => {
-    dispatch(nextPage());
-  };
-
-  const handlePreviousPage = () => {
-    dispatch(previousPage());
-  };
-
-  const handlePageSelect = (pageIndex: number) => {
-    dispatch(setCurrentPage(pageIndex));
   };
 
   const handleZoomIn = () => {

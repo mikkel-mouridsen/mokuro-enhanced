@@ -1,6 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { Manga, MangaPage } from './models';
-import { setLoading, setError, setCurrentManga } from './reader.slice';
+import { setLoading, setError, setCurrentManga, setCurrentPage } from './reader.slice';
 import * as api from '../api/api.client';
 import { LibraryService } from '../services/LibraryService';
 import { libraryApi } from '../api/library.api';
@@ -24,23 +24,57 @@ export const loadVolumeFromLibrary = createAsyncThunk(
       // Fetch pages with OCR data
       const pages = await libraryApi.getVolumePages(volumeId);
 
+      // Use saved currentPage from volume, or default to 0
+      const startPage = Math.min(volume.currentPage || 0, pages.length - 1);
+
       const readerManga: Manga = {
         id: volumeId,
         title: `${manga.title} - Volume ${volume.volumeNumber}`,
         folderPath: `/library/${mangaId}/${volumeId}`,
         pages,
-        currentPageIndex: 0,
+        currentPageIndex: startPage,
         totalPages: pages.length,
       };
 
       dispatch(setCurrentManga(readerManga));
       dispatch(setLoading(false));
 
+      // Mark the current page as read when volume is opened
+      if (pages.length > 0 && pages[startPage]?.id) {
+        try {
+          await libraryApi.markPageAsRead(pages[startPage].id, startPage);
+        } catch (error) {
+          console.error('Failed to mark initial page as read:', error);
+          // Don't fail the whole load if this fails
+        }
+      }
+
       return readerManga;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load volume';
       dispatch(setError(errorMessage));
       dispatch(setLoading(false));
+      return rejectWithValue(error);
+    }
+  }
+);
+
+// Thunk to mark a page as read and update progress
+export const markPageAsReadThunk = createAsyncThunk(
+  'reader/markPageAsRead',
+  async ({ pageId, pageIndex }: { pageId: string; pageIndex: number }, { dispatch, rejectWithValue }) => {
+    try {
+      // Update the local page index first for immediate UI feedback
+      dispatch(setCurrentPage(pageIndex));
+      
+      // Then mark the page as read in the backend and save current position
+      await libraryApi.markPageAsRead(pageId, pageIndex);
+      
+      // The backend will automatically update volume progress and currentPage
+      return { pageId, pageIndex };
+    } catch (error) {
+      console.error('Failed to mark page as read:', error);
+      // Don't show error to user, just log it - the page change still happened locally
       return rejectWithValue(error);
     }
   }

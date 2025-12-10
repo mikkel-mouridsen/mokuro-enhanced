@@ -25,6 +25,8 @@ export interface ElectronAPI {
   readFileAsBuffer: (filePath: string) => Promise<Uint8Array>;
   createMokuroZip: (folderPath: string) => Promise<Uint8Array>;
   createImagesZip: (folderPath: string) => Promise<Uint8Array>;
+  // Docker / Server APIs
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
 }
 
 const electronAPI: ElectronAPI = {
@@ -50,6 +52,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('create-mokuro-zip', folderPath),
   createImagesZip: (folderPath: string) => 
     ipcRenderer.invoke('create-images-zip', folderPath),
+  // Generic invoke for Docker/Server APIs
+  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);

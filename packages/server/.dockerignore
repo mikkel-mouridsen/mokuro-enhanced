@@ -1,0 +1,48 @@
+# Server-specific .dockerignore
+# This builds from packages/server context
+
+# Dependencies (will be installed in container)
+node_modules
+npm-debug.log
+
+# Build output (will be built in container)
+dist
+*.tsbuildinfo
+
+# User data - CRITICAL: Never include in Docker image
+uploads
+temp
+
+# Tests (not needed in production)
+coverage
+*.spec.ts
+test
+
+# IDE files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Environment files - CRITICAL: Never include secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# Documentation
+README.md
+*.md
+

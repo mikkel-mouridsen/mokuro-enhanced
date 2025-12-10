@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { PhotoCamera, Visibility, VisibilityOff } from '@mui/icons-material';
 import type { User } from '../../api/auth.api';
+import { getAbsoluteImageUrl } from '../../utils/image-url';
 
 interface ProfileDialogProps {
   open: boolean;
@@ -133,7 +134,7 @@ const ProfileDialog: React.FC<ProfileDialogProps> = ({
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
           <Box sx={{ position: 'relative', mb: 2 }}>
             <Avatar
-              src={user?.profilePicture || undefined}
+              src={getAbsoluteImageUrl(user?.profilePicture) || undefined}
               sx={{ width: 120, height: 120 }}
             >
               {user?.username?.[0]?.toUpperCase()}

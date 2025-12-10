@@ -21,6 +21,8 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
+import DnsIcon from '@mui/icons-material/Dns';
+import { getAbsoluteImageUrl } from '../../utils/image-url';
 
 export interface TopBarProps {
   title: string;
@@ -30,6 +32,7 @@ export interface TopBarProps {
   onSettingsClick: () => void;
   onToggleFullscreen: () => void;
   onBackToLibrary?: () => void;
+  onServerClick?: () => void;
   username?: string;
   profilePicture?: string | null;
   onProfileClick?: () => void;
@@ -44,6 +47,7 @@ const TopBar: React.FC<TopBarProps> = ({
   onSettingsClick,
   onToggleFullscreen,
   onBackToLibrary,
+  onServerClick,
   username,
   profilePicture,
   onProfileClick,
@@ -107,6 +111,14 @@ const TopBar: React.FC<TopBarProps> = ({
             </IconButton>
           </Tooltip>
 
+          {onServerClick && (
+            <Tooltip title="Server Management">
+              <IconButton color="inherit" aria-label="server" onClick={onServerClick}>
+                <DnsIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+
           <Tooltip title={fullscreen ? "Exit Fullscreen" : "Fullscreen"}>
             <IconButton color="inherit" aria-label="fullscreen" onClick={onToggleFullscreen}>
               {fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
@@ -122,7 +134,7 @@ const TopBar: React.FC<TopBarProps> = ({
                   aria-label="account"
                 >
                   <Avatar
-                    src={profilePicture || undefined}
+                    src={getAbsoluteImageUrl(profilePicture) || undefined}
                     sx={{ width: 32, height: 32 }}
                   >
                     {username[0].toUpperCase()}

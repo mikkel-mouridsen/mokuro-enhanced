@@ -1,9 +1,11 @@
 import { app, BrowserWindow, ipcMain, dialog, session, globalShortcut } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { DockerManager } from './docker-manager';
 
 let mainWindow: BrowserWindow | null = null;
 let yomitanExtension: any = null;
+let dockerManager: DockerManager | null = null;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -100,6 +102,9 @@ function openYomitanSettings() {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Initialize Docker Manager
+  dockerManager = new DockerManager();
+  
   // Load Yomitan extension
   const extPath = isDev 
     ? path.join(__dirname, '../../yomitan') 
@@ -440,5 +445,109 @@ ipcMain.handle('create-images-zip', async (_event, folderPath: string) => {
     console.error('Error creating images zip:', error);
     throw error;
   }
+});
+
+// ============================================================================
+// Docker / Integrated Server IPC Handlers
+// ============================================================================
+
+/**
+ * Check if Docker is installed and running
+ */
+ipcMain.handle('docker:check-status', async () => {
+  if (!dockerManager) {
+    return { installed: false, running: false, error: 'Docker manager not initialized' };
+  }
+  return await dockerManager.checkDockerStatus();
+});
+
+/**
+ * Check if Docker Compose is available
+ */
+ipcMain.handle('docker:check-compose', async () => {
+  if (!dockerManager) {
+    return false;
+  }
+  return await dockerManager.checkDockerCompose();
+});
+
+/**
+ * Get the status of the standalone server stack
+ */
+ipcMain.handle('docker:get-stack-status', async () => {
+  if (!dockerManager) {
+    return { isRunning: false, containers: [], error: 'Docker manager not initialized' };
+  }
+  return await dockerManager.getStackStatus();
+});
+
+/**
+ * Start the standalone server stack
+ */
+ipcMain.handle('docker:start-stack', async () => {
+  if (!dockerManager) {
+    return { success: false, error: 'Docker manager not initialized' };
+  }
+  return await dockerManager.startStack();
+});
+
+/**
+ * Stop the standalone server stack
+ */
+ipcMain.handle('docker:stop-stack', async () => {
+  if (!dockerManager) {
+    return { success: false, error: 'Docker manager not initialized' };
+  }
+  return await dockerManager.stopStack();
+});
+
+/**
+ * Restart the standalone server stack
+ */
+ipcMain.handle('docker:restart-stack', async () => {
+  if (!dockerManager) {
+    return { success: false, error: 'Docker manager not initialized' };
+  }
+  return await dockerManager.restartStack();
+});
+
+/**
+ * Get logs from the stack
+ */
+ipcMain.handle('docker:get-logs', async (_event, service?: string) => {
+  if (!dockerManager) {
+    return 'Docker manager not initialized';
+  }
+  return await dockerManager.getStackLogs(service);
+});
+
+/**
+ * Check if the server is healthy
+ */
+ipcMain.handle('docker:check-server-health', async () => {
+  if (!dockerManager) {
+    return false;
+  }
+  return await dockerManager.checkServerHealth();
+});
+
+/**
+ * Get network information for mobile access
+ */
+ipcMain.handle('docker:get-network-info', async () => {
+  if (!dockerManager) {
+    return [];
+  }
+  return await dockerManager.getNetworkInfo();
+});
+
+/**
+ * Create default admin user
+ */
+ipcMain.handle('docker:create-default-user', async () => {
+  if (!dockerManager) {
+    return { success: false, error: 'Docker manager not initialized' };
+  }
+  return await dockerManager.createDefaultUser();
 });
 

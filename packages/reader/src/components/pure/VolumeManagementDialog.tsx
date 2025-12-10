@@ -14,7 +14,7 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { Close, DeleteOutline, DriveFileMoveOutlined } from '@mui/icons-material';
+import { Close, DeleteOutline, DriveFileMoveOutlined, Download } from '@mui/icons-material';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -58,6 +58,7 @@ interface VolumeManagementDialogProps {
   onSave: (id: string, data: Partial<Volume>) => void;
   onDelete: (id: string) => void;
   onMove: (id: string, targetMangaId: string, newVolumeNumber?: number) => void;
+  onExport: (id: string) => void;
 }
 
 const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
@@ -68,6 +69,7 @@ const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
   onSave,
   onDelete,
   onMove,
+  onExport,
 }) => {
   const [currentTab, setCurrentTab] = useState(0);
   const [formData, setFormData] = useState<Partial<Volume>>({
@@ -77,6 +79,7 @@ const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
   const [selectedManga, setSelectedManga] = useState<Manga | null>(null);
   const [newVolumeNumber, setNewVolumeNumber] = useState<number | undefined>(undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (volume) {
@@ -120,6 +123,17 @@ const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
     }
   };
 
+  const handleExport = async () => {
+    if (volume) {
+      setIsExporting(true);
+      try {
+        await onExport(volume.id);
+      } finally {
+        setIsExporting(false);
+      }
+    }
+  };
+
   if (!volume) return null;
 
   return (
@@ -137,6 +151,7 @@ const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
           <Tabs value={currentTab} onChange={(_, newValue) => setCurrentTab(newValue)}>
             <Tab label="Edit" />
             <Tab label="Move" />
+            <Tab label="Export" />
             <Tab label="Delete" />
           </Tabs>
         </Box>
@@ -189,8 +204,28 @@ const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
           </Box>
         </TabPanel>
 
-        {/* Delete Tab */}
+        {/* Export Tab */}
         <TabPanel value={currentTab} index={2}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Alert severity="info">
+              Export this volume as a zip file containing the images and .mokuro file. 
+              This allows you to share or backup your processed manga.
+            </Alert>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<Download />}
+              onClick={handleExport}
+              disabled={isExporting}
+              fullWidth
+            >
+              {isExporting ? 'Exporting...' : 'Export Volume'}
+            </Button>
+          </Box>
+        </TabPanel>
+
+        {/* Delete Tab */}
+        <TabPanel value={currentTab} index={3}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {showDeleteConfirm ? (
               <Alert
@@ -243,6 +278,17 @@ const VolumeManagementDialog: React.FC<VolumeManagementDialogProps> = ({
             startIcon={<DriveFileMoveOutlined />}
           >
             Move Volume
+          </Button>
+        )}
+        {currentTab === 2 && (
+          <Button
+            onClick={handleExport}
+            variant="contained"
+            color="primary"
+            disabled={isExporting}
+            startIcon={<Download />}
+          >
+            {isExporting ? 'Exporting...' : 'Export Volume'}
           </Button>
         )}
       </DialogActions>

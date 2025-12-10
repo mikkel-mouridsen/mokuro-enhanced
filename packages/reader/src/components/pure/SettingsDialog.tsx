@@ -24,8 +24,9 @@ import {
   ToggleButton,
   Chip,
 } from '@mui/material';
-import { Smartphone, Computer } from '@mui/icons-material';
+import { Smartphone, Computer, BookOutlined } from '@mui/icons-material';
 import { ReaderSettings, DeviceProfile, AppSettings } from '../../store/models';
+import DictionaryManager from './DictionaryManager';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -72,6 +73,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
   onSaveSettings,
 }) => {
   const [currentTab, setCurrentTab] = React.useState(0);
+  const [dictionaryManagerOpen, setDictionaryManagerOpen] = React.useState(false);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
@@ -128,9 +130,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={currentTab} onChange={handleTabChange}>
             <Tab label="App Settings" />
+            <Tab label="Server" />
             <Tab label="Display" />
             <Tab label="Reading" />
             <Tab label="OCR" />
+            <Tab label="Dictionary" />
             <Tab label="Anki" />
           </Tabs>
         </Box>
@@ -182,8 +186,41 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           </Box>
         </TabPanel>
 
-        {/* Display Settings */}
+        {/* Server Management */}
         <TabPanel value={currentTab} index={1}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              Server management is only available in the desktop application.
+              {appSettings?.serverMode === 'standalone' && ' Open the Server menu from the toolbar to manage your integrated server.'}
+            </Typography>
+            
+            {appSettings && (
+              <>
+                <Divider />
+                <Box>
+                  <Typography gutterBottom fontWeight="bold">
+                    Current Mode
+                  </Typography>
+                  <Chip 
+                    label={
+                      appSettings.serverMode === 'cloud' ? 'Cloud Server' :
+                      appSettings.serverMode === 'standalone' ? 'Integrated Server' :
+                      'Offline Mode'
+                    } 
+                    color="primary" 
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    To change modes, clear your local storage and restart the app,
+                    or manually edit settings in the browser console.
+                  </Typography>
+                </Box>
+              </>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Display Settings */}
+        <TabPanel value={currentTab} index={2}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Dark Mode */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -231,7 +268,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </TabPanel>
 
         {/* Reading Settings */}
-        <TabPanel value={currentTab} index={2}>
+        <TabPanel value={currentTab} index={3}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Page Layout */}
             <FormControl component="fieldset">
@@ -305,7 +342,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </TabPanel>
 
         {/* OCR Settings */}
-        <TabPanel value={currentTab} index={3}>
+        <TabPanel value={currentTab} index={4}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Display OCR */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -387,8 +424,96 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
           </Box>
         </TabPanel>
 
+        {/* Dictionary Settings */}
+        <TabPanel value={currentTab} index={5}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Dictionary Management */}
+            <Box>
+              <Typography gutterBottom fontWeight="bold">
+                Dictionary Management
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Manage Japanese dictionaries for web-native lookup functionality.
+                This enables dictionary lookups on iOS and other platforms where browser extensions are not available.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<BookOutlined />}
+                onClick={() => setDictionaryManagerOpen(true)}
+                fullWidth
+              >
+                Open Dictionary Manager
+              </Button>
+            </Box>
+
+            <Divider />
+
+            {/* Dictionary Features Info */}
+            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Dictionary Features:
+              </Typography>
+              <Typography variant="caption" color="text.secondary" component="div">
+                • Click on Japanese text to lookup definitions<br />
+                • Long-press on mobile devices (500ms)<br />
+                • Automatic verb/adjective deinflection<br />
+                • Multiple dictionary support<br />
+                • Works offline after dictionary import<br />
+                • Compatible with standard Yomitan dictionaries
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            {/* Getting Dictionaries */}
+            <Box sx={{ p: 2, bgcolor: 'info.main', color: 'info.contrastText', borderRadius: 1, opacity: 0.9 }}>
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Where to Get Dictionaries:
+              </Typography>
+              <Typography variant="caption" component="div">
+                Download Yomitan-compatible dictionaries from:<br />
+                • <strong>Jitendex</strong> - Recommended bilingual dictionary<br />
+                • <strong>JMDict</strong> - Comprehensive Japanese-English<br />
+                • <strong>Kanjidic</strong> - Kanji information<br />
+                <br />
+                Visit the{' '}
+                <a
+                  href="https://github.com/themoeway/yomitan#dictionaries"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'inherit', textDecoration: 'underline' }}
+                >
+                  Yomitan dictionary repository
+                </a>
+                {' '}for downloads.
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            {/* Usage Instructions */}
+            <Box>
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Usage Instructions:
+              </Typography>
+              <Typography variant="caption" color="text.secondary" component="div">
+                <strong>Desktop:</strong><br />
+                1. Hover over OCR text to reveal it<br />
+                2. Click on Japanese text to show definition popup<br />
+                3. Click outside the popup to close it<br />
+                <br />
+                <strong>Mobile/iOS:</strong><br />
+                1. Long-press (hold for 500ms) on Japanese text<br />
+                2. Popup appears with definitions<br />
+                3. Tap outside popup to close<br />
+                4. Swipe through multiple results if available
+              </Typography>
+            </Box>
+          </Box>
+        </TabPanel>
+
         {/* Anki Settings */}
-        <TabPanel value={currentTab} index={4}>
+        <TabPanel value={currentTab} index={6}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Enable Anki Screenshots */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -541,6 +666,12 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({
         )}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
+
+      {/* Dictionary Manager Dialog */}
+      <DictionaryManager
+        open={dictionaryManagerOpen}
+        onClose={() => setDictionaryManagerOpen(false)}
+      />
     </Dialog>
   );
 };

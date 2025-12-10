@@ -4,30 +4,40 @@ import { AppSettingsState, AppSettings } from './models';
 // Default backend endpoint - can be overridden by environment variable or user settings
 const DEFAULT_BACKEND_ENDPOINT = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-// Load from localStorage if available
-const loadBackendEndpoint = (): string => {
+// Load settings from localStorage
+const loadAppSettings = (): AppSettings => {
   try {
-    const savedEndpoint = localStorage.getItem('backendEndpoint');
-    return savedEndpoint || DEFAULT_BACKEND_ENDPOINT;
+    const savedSettings = localStorage.getItem('appSettings');
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      return {
+        backendEndpoint: parsed.backendEndpoint || DEFAULT_BACKEND_ENDPOINT,
+        serverMode: parsed.serverMode || 'cloud',
+        standaloneServerEnabled: parsed.standaloneServerEnabled || false,
+      };
+    }
   } catch (error) {
-    console.error('Failed to load backend endpoint from localStorage:', error);
-    return DEFAULT_BACKEND_ENDPOINT;
+    console.error('Failed to load app settings from localStorage:', error);
   }
+  
+  return {
+    backendEndpoint: DEFAULT_BACKEND_ENDPOINT,
+    serverMode: 'cloud',
+    standaloneServerEnabled: false,
+  };
 };
 
-// Save to localStorage
-const saveBackendEndpoint = (endpoint: string): void => {
+// Save settings to localStorage
+const saveAppSettings = (settings: AppSettings): void => {
   try {
-    localStorage.setItem('backendEndpoint', endpoint);
+    localStorage.setItem('appSettings', JSON.stringify(settings));
   } catch (error) {
-    console.error('Failed to save backend endpoint to localStorage:', error);
+    console.error('Failed to save app settings to localStorage:', error);
   }
 };
 
 const initialState: AppSettingsState = {
-  settings: {
-    backendEndpoint: loadBackendEndpoint(),
-  },
+  settings: loadAppSettings(),
   isLoading: false,
   error: null,
 };
@@ -38,23 +48,37 @@ const appSettingsSlice = createSlice({
   reducers: {
     setBackendEndpoint: (state, action: PayloadAction<string>) => {
       state.settings.backendEndpoint = action.payload;
-      saveBackendEndpoint(action.payload);
+      saveAppSettings(state.settings);
+    },
+    
+    setServerMode: (state, action: PayloadAction<'cloud' | 'standalone' | 'offline'>) => {
+      state.settings.serverMode = action.payload;
+      
+      // Auto-set backend endpoint based on mode
+      if (action.payload === 'standalone') {
+        state.settings.backendEndpoint = 'http://localhost:3000';
+      }
+      
+      saveAppSettings(state.settings);
+    },
+    
+    setStandaloneServerEnabled: (state, action: PayloadAction<boolean>) => {
+      state.settings.standaloneServerEnabled = action.payload;
+      saveAppSettings(state.settings);
     },
     
     updateAppSettings: (state, action: PayloadAction<Partial<AppSettings>>) => {
       state.settings = { ...state.settings, ...action.payload };
-      
-      // Save backend endpoint if it was updated
-      if (action.payload.backendEndpoint) {
-        saveBackendEndpoint(action.payload.backendEndpoint);
-      }
+      saveAppSettings(state.settings);
     },
     
     resetAppSettings: (state) => {
       state.settings = {
         backendEndpoint: DEFAULT_BACKEND_ENDPOINT,
+        serverMode: 'cloud',
+        standaloneServerEnabled: false,
       };
-      saveBackendEndpoint(DEFAULT_BACKEND_ENDPOINT);
+      saveAppSettings(state.settings);
     },
     
     setError: (state, action: PayloadAction<string | null>) => {
@@ -77,6 +101,8 @@ const appSettingsSlice = createSlice({
 
 export const {
   setBackendEndpoint,
+  setServerMode,
+  setStandaloneServerEnabled,
   updateAppSettings,
   resetAppSettings,
   setError,

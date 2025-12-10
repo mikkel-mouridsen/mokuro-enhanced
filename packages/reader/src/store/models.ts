@@ -107,6 +107,8 @@ export interface UIState {
 
 export interface AppSettings {
   backendEndpoint: string;
+  serverMode: 'cloud' | 'standalone' | 'offline';
+  standaloneServerEnabled: boolean;
 }
 
 export interface AppSettingsState {

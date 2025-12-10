@@ -9,7 +9,7 @@ out/
 # TypeScript
 *.tsbuildinfo
 
-# Environment
+# Environment - NEVER COMMIT THESE
 .env
 .env.local
 .env.production.local
@@ -21,6 +21,8 @@ out/
 *.swp
 *.swo
 *~
+*.sublime-workspace
+*.sublime-project
 
 # OS
 .DS_Store
@@ -39,4 +41,9 @@ coverage/
 # Temporary files
 *.tmp
 .cache/
+
+# Electron specific
+electron-builder.yml
+builder-effective-config.yaml
+builder-debug.yml
 

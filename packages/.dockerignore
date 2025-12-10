@@ -1,0 +1,74 @@
+# This is the main .dockerignore for building from ./packages context
+
+# Development and reference directories (not needed for production)
+mobile/
+
+# Dependencies (will be installed in container)
+**/node_modules
+**/npm-debug.log
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Build outputs (will be built in container)
+**/dist
+**/*.tsbuildinfo
+**/build
+**/out
+
+# User data - CRITICAL: Never include in Docker image
+server/uploads
+server/temp
+**/uploads
+**/temp
+
+# Tests (not needed in production)
+**/coverage
+**/*.spec.ts
+**/*.test.ts
+**/test
+**/tests
+
+# IDE files
+**/.idea
+**/.vscode
+**/*.swp
+**/*.swo
+**/*~
+**/*.sublime-workspace
+**/*.sublime-project
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Git
+**/.git
+**/.gitignore
+**/.gitattributes
+
+# Environment files - CRITICAL: Never include secrets
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.production
+**/.env.development
+
+# Logs
+**/logs
+**/*.log
+
+# Reader specific (not needed for server build)
+reader/release/
+reader/yomitan/
+reader/electron/
+
+# Documentation (not needed in production)
+**/README.md
+**/*.md
+
+# CI/CD
+.github
+**/.github
+

@@ -21,6 +21,7 @@ export interface MangaVolume {
   chapters: VolumeChapter[];
   isRead: boolean;
   progress: number; // 0-100
+  currentPage: number; // Last page the user was on (0-based index)
   status?: 'uploaded' | 'processing' | 'completed' | 'failed';
   processingMessage?: string;
 }

@@ -2,6 +2,31 @@ import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { SettingsState, ReaderSettings, DeviceProfile } from './models';
 import { getUserSettings, updateUserSettings, resetUserSettings } from '../api/userSettings';
 
+// Local storage key for current profile
+const CURRENT_PROFILE_STORAGE_KEY = 'mokuro-reader-current-profile';
+
+// Load current profile from localStorage
+const loadCurrentProfileFromStorage = (): DeviceProfile => {
+  try {
+    const stored = localStorage.getItem(CURRENT_PROFILE_STORAGE_KEY);
+    if (stored === DeviceProfile.MOBILE || stored === DeviceProfile.DESKTOP) {
+      return stored;
+    }
+  } catch (error) {
+    console.warn('Failed to load current profile from localStorage:', error);
+  }
+  return DeviceProfile.DESKTOP; // Default to desktop
+};
+
+// Save current profile to localStorage
+const saveCurrentProfileToStorage = (profile: DeviceProfile) => {
+  try {
+    localStorage.setItem(CURRENT_PROFILE_STORAGE_KEY, profile);
+  } catch (error) {
+    console.warn('Failed to save current profile to localStorage:', error);
+  }
+};
+
 const getDefaultSettings = (): ReaderSettings => ({
   // Display settings
   darkMode: true,
@@ -39,9 +64,11 @@ const getDefaultMobileSettings = (): ReaderSettings => ({
   defaultZoomMode: 'fit-to-width',
 });
 
+const loadedProfile = loadCurrentProfileFromStorage();
+
 const initialState: SettingsState = {
-  settings: getDefaultSettings(),
-  currentProfile: DeviceProfile.DESKTOP,
+  settings: loadedProfile === DeviceProfile.DESKTOP ? getDefaultSettings() : getDefaultMobileSettings(),
+  currentProfile: loadedProfile,
   desktopSettings: getDefaultSettings(),
   mobileSettings: getDefaultMobileSettings(),
   isLoading: false,
@@ -92,6 +119,8 @@ const settingsSlice = createSlice({
       state.settings = action.payload === DeviceProfile.DESKTOP 
         ? state.desktopSettings 
         : state.mobileSettings;
+      // Persist to localStorage
+      saveCurrentProfileToStorage(action.payload);
     },
     setProfileSettings: (state, action: PayloadAction<{ profile: DeviceProfile; settings: ReaderSettings }>) => {
       const { profile, settings } = action.payload;

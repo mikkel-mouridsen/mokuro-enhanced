@@ -25,6 +25,7 @@ import { LibraryManga } from '../../store/library.model';
 import { UploadButton } from './UploadButton';
 import { BulkImportButton } from './BulkImportButton';
 import { Button } from '@mui/material';
+import { getAbsoluteImageUrl } from '../../utils/image-url';
 
 export interface LibraryViewProps {
   mangas: LibraryManga[];
@@ -100,7 +101,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
             <Tooltip title="Account">
               <IconButton onClick={handleMenuOpen} aria-label="account">
                 <Avatar
-                  src={profilePicture || undefined}
+                  src={getAbsoluteImageUrl(profilePicture) || undefined}
                   sx={{ width: 32, height: 32 }}
                 >
                   {username[0].toUpperCase()}

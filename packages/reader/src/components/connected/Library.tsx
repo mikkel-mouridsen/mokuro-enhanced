@@ -11,6 +11,7 @@ import { setSelectedManga, updateVolumeProcessingStatus } from '../../store/libr
 import { logoutUser, updateUserProfile, uploadProfilePicture } from '../../store/auth.thunks';
 import { useProgressUpdates, ProgressUpdate } from '../../hooks/useProgressUpdates';
 import * as LibraryManagementAPI from '../../api/library-management';
+import { libraryApi } from '../../api/library.api';
 
 const Library: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -225,6 +226,15 @@ const Library: React.FC = () => {
     }
   };
 
+  const handleVolumeExport = async (volumeId: string) => {
+    try {
+      await libraryApi.exportVolume(volumeId);
+    } catch (error: any) {
+      console.error('Failed to export volume:', error);
+      alert(`Failed to export volume: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   // Get selected manga data
   const selectedManga = mangas.find((m) => m.id === selectedMangaId);
   const selectedVolumes = selectedMangaId ? volumes[selectedMangaId] || [] : [];
@@ -260,6 +270,7 @@ const Library: React.FC = () => {
           onSave={handleVolumeSave}
           onDelete={handleVolumeDelete}
           onMove={handleVolumeMove}
+          onExport={handleVolumeExport}
         />
       </>
     );

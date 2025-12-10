@@ -175,11 +175,35 @@ export class LibraryController {
 
   @Post('pages/:pageId/mark-read')
   @ApiOperation({ summary: 'Mark a page as read' })
-  async markPageAsRead(@Param('pageId', ParseUUIDPipe) pageId: string) {
+  async markPageAsRead(
+    @Param('pageId', ParseUUIDPipe) pageId: string,
+    @Body() body?: { currentPageIndex?: number },
+  ) {
     const page = await this.libraryService.markPageAsRead(pageId);
-    // Update volume progress
-    await this.libraryService.updateVolumeProgress(page.volumeId);
+    // Update volume progress and save current page position
+    await this.libraryService.updateVolumeProgress(page.volumeId, body?.currentPageIndex);
     return page;
+  }
+
+  // ==================== EXPORT ENDPOINTS ====================
+
+  @Get('volumes/:id/export')
+  @ApiOperation({ summary: 'Export a volume as a zip file with images and .mokuro file' })
+  async exportVolume(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+  ) {
+    const zipBuffer = await this.libraryService.exportVolume(id);
+    
+    // Get volume info for filename
+    const volume = await this.libraryService.findVolumeById(id);
+    const filename = `${volume.manga.title.replace(/[^a-zA-Z0-9-_]/g, '_')}-${String(volume.volumeNumber).padStart(2, '0')}.zip`;
+    
+    return {
+      buffer: zipBuffer.toString('base64'),
+      filename,
+      contentType: 'application/zip',
+    };
   }
 }
 

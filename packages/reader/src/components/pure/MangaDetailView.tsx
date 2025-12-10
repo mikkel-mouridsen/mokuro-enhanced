@@ -16,6 +16,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import VolumeCard from './VolumeCard';
 import { LibraryManga, MangaVolume } from '../../store/library.model';
 import { UploadButton } from './UploadButton';
+import { getAbsoluteImageUrl } from '../../utils/image-url';
 
 export interface MangaDetailViewProps {
   manga: LibraryManga;
@@ -98,7 +99,7 @@ const MangaDetailView: React.FC<MangaDetailViewProps> = ({
               <Grid item xs={12} sm={4} md={3}>
                 <Box
                   component="img"
-                  src={manga.coverUrl}
+                  src={getAbsoluteImageUrl(manga.coverUrl) || manga.coverUrl}
                   alt={manga.title}
                   sx={{
                     width: '100%',
